@@ -1,0 +1,12 @@
+name: bamutils
+channels:
+  - defaults
+dependencies:
+  - python=3
+  - pandas
+  - pysam=0.15
+  - pysamstats
+  - gffutils
+  - biopython
+  - matplotlib
+  - tqdm

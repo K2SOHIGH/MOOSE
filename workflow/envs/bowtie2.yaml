@@ -1,0 +1,8 @@
+name: bowtie2
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bowtie2
+prefix: /home/mmillet/miniconda3/envs/bowtie2

@@ -1,0 +1,8 @@
+name: fastQC
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - fastqc
+prefix: /Users/maxime/miniconda3/envs/fastQC
