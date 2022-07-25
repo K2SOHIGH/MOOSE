@@ -16,25 +16,12 @@ rule assembly:
             os.path.join(RESDIR , "{sample}" , "contig-qc" ,"multiqc_report.html"),
             sample = [config["NAME"]],
         ),
-        # expand(
-        #     os.path.join( RESDIR,"{sample}", "profiles", "{assembler}_profile", "PROFILE.db" ),
-        #     assembler = ASSEMBLER,
-        #     sample = [config["NAME"]],   
-        # )
 
 rule contigs_qc:
     output:
         os.path.join(RESDIR , "{sample}" , "contig-qc" ,"multiqc_report.html"),
-    input:
-        expand(
-            os.path.join(
-                RESDIR , "{{sample}}", "bam" , "{{sample}}_{assembler}.sorted.bam"
-            ),            
-            assembler = ASSEMBLER,
-        ),       
-        expand(
-            os.path.join(RESDIR, "{{sample}}" , "contigs-qc","report.html"),            
-        )    
+    input:          
+        os.path.join(RESDIR, "{sample}" , "contigs-qc","report.html"),        
     conda:
         "./envs/multiqc.yaml"     
     params:
