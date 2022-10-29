@@ -7,6 +7,7 @@ import json
 import logging
 import yaml
 import sys
+import multiprocessing
 
 try:    
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -159,7 +160,7 @@ def qc(NAME,RESDIR,R1,R2,ST,SINGLE,L,LT,SNAKARGS):
 @click.option('--logfile' , default = None, type = str , help="logfile")
 
 @click.option('--snakargs', 'SNAKARGS' , type=str,
-    default = "-j25 --use-conda --printshellcmds --nolock" , help = "snakemake configuration" )
+    default = "-j{} --use-conda --printshellcmds --nolock".format(multiprocessing.cpu_count()-1) , help = "snakemake configuration" )
 
 
 def assemble(NAME, RESDIR , R1 , R2 , ST , SINGLE , L , LT , ASSEMBLER , KLIST , mode , mc , uc , sc , min_quality, min_identity, min_length , properly_paired , logfile ,  SNAKARGS ):
@@ -167,7 +168,6 @@ def assemble(NAME, RESDIR , R1 , R2 , ST , SINGLE , L , LT , ASSEMBLER , KLIST ,
         Run assembly
     """
     RESDIR = os.path.abspath(RESDIR)
-    
     if logfile:
         logger.addHandler(
             log.file_handler(logfile,logging.info)
@@ -234,7 +234,7 @@ def assemble(NAME, RESDIR , R1 , R2 , ST , SINGLE , L , LT , ASSEMBLER , KLIST ,
         "min_identity":min_identity,
         "min_len":min_length,
         "properly_paired":properly_paired,
-        "SNAKARGS":SNAKARGS,
+        "SNAKARGS": SNAKARGS,
     }
 
     configfile = os.path.join( RESDIR , "assembly-config.yaml" )
@@ -246,11 +246,12 @@ def assemble(NAME, RESDIR , R1 , R2 , ST , SINGLE , L , LT , ASSEMBLER , KLIST ,
     SNAKEFILE =  os.path.join(os.path.dirname(__file__), 'workflow/assembly.smk')
 
     cmd = """
-        snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs}
+        snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs} --conda-prefix {cprefix} 
     """.format( 
         snakefile = SNAKEFILE , 
         config    = os.path.join( RESDIR , "assembly-config.yaml"),
-        snakargs  = SNAKARGS 
+        snakargs  = SNAKARGS,
+        cprefix = cprefix,
     )
     
     logger.info("running : \n{}\n".format( cmd ) )
