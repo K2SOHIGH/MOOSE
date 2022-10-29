@@ -22,7 +22,7 @@ rule unicycler:
     input:
         get_unicycler_input,
     params:
-        unicycler_input = lambda wildcards,input : utils.set_unicycler_input_cmdline(input),
+        unicycler_input = lambda wildcards,input : utils.set_unicycler_input_cmdline(input , wildcards.assembly_type),
         outdir = os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}"),
         unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",
     threads:

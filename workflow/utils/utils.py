@@ -135,9 +135,8 @@ def set_spades_input_cmdline(sample_input , assembly_type = "hybrid"):
         return " ".join( [paired_end_reads , single_reads , long_reads]  )
 
 def set_unicycler_input_cmdline(unicycler_input_files, assembly_type="hybrid"):
-
-    for file in unicycler_input_files:
-        paired_end_reads = ""
+    paired_end_reads = ""
+    for file in unicycler_input_files:                        
         if re.search("left_reads", file):
             paired_end_reads += "-1 {} ".format(file)
         if re.search("right_reads", file):
@@ -149,9 +148,9 @@ def set_unicycler_input_cmdline(unicycler_input_files, assembly_type="hybrid"):
         if re.search("long_reads", file):
             long_reads = "-l {} ".format(file)
     
-    if assembly_type == "longread_only":
+    if assembly_type == "long_reads":
         return long_reads
-    elif assembly_type == "shortread_only":
+    elif assembly_type == "short_reads":
         return  " ".join( [paired_end_reads , single_reads])
     else:
         return " ".join( [paired_end_reads , single_reads , long_reads]  )

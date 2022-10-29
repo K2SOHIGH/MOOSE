@@ -18,6 +18,8 @@ rule megahit:
         UR = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "single_reads" ),
     conda:
         "../envs/megahit.yaml"
+    log:
+        os.path.join(RESDIR , "{sample}", "megahit-{assembly_type}", "megahit.log")
     threads:
         10
     params:
@@ -30,4 +32,4 @@ rule megahit:
         "{params.megahit_inputs} "
         "-o {params.outdir} "
         "{params.megahit_cmd} "
-        "-t {threads} "
+        "-t {threads} > {log}"
