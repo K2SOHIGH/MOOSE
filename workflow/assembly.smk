@@ -7,16 +7,38 @@ RESDIR = config["RESDIR"]
 INPUTFILE = config["INPUT"]
 
 INPUTS = json.load(open(INPUTFILE))
-ASSEMBLER = ["megahit","unicycler","spades"]
 
+ASSEMBLERS = config["ASSEMBLER"]
+ASSEMBLY_TYPES = config["ASSEMBLY_TYPES"]
 
+ASSEMBLER_AND_TYPES = []
+for i in ASSEMBLERS:
+    for j in ASSEMBLY_TYPES:
+        if i == "megahit":
+            if j == "short_reads":
+                ASSEMBLER_AND_TYPES.append( i + "-" + j ) 
+        else:
+            ASSEMBLER_AND_TYPES.append( i + "-" + j ) 
+        
+        
+    
 rule assembly:
     input:
         expand(
-            os.path.join(RESDIR , "{sample}" , "contig-qc" ,"multiqc_report.html"),
-            sample = [config["NAME"]],
-        ),
+            os.path.join(RESDIR , "{sample}" , "contig-qc" ,"multiqc_report.html"), sample=INPUTS
+        )
+    
 
+# rule long_read_assembly_polyshing:
+#     output:
+#         touch( os.path.join(RESDIR , "{sample}",  "polyshing.done") )
+#     input:    
+#         expand(
+#             os.path.join( RESDIR , "{{sample}}", "{assembler_assembly_type}" ,  "polyshing.done" ), 
+#             assembler_assembly_type = [at for at in ASSEMBLER_AND_TYPES if re.search("long_reads",at)],
+#         )   
+    
+    
 rule contigs_qc:
     output:
         os.path.join(RESDIR , "{sample}" , "contig-qc" ,"multiqc_report.html"),
@@ -31,33 +53,19 @@ rule contigs_qc:
         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir}"
 
 
-def get_contigs(wildcards):
-    if wildcards.assembler == "megahit":
-        return os.path.join(
-            RESDIR , "{sample}", "megahit" , "final.contigs.fa"
-        )
-    if wildcards.assembler == "unicycler":
-        return os.path.join( 
-            RESDIR , "{sample}", "unicycler","assembly.fasta")
-    
-    if wildcards.assembler == "spades":
-        return os.path.join( 
-            RESDIR , "{sample}", "spades","contigs.fasta")
-
-
 rule reformat_contigs:
     """
         reformat contigs for anvi'o
     """
     output:
         contigs = os.path.join(
-            RESDIR , "{sample}", "contigs" , "{sample}.{assembler}.contigs.fa"
+            RESDIR , "{sample}", "{assembler}-{assembly_type}" ,  "final_contigs_reformat.fasta"
         ),
         tsv =  os.path.join(
-            RESDIR , "{sample}", "tables" , "{sample}.{assembler}.contigs.tsv"
+            RESDIR , "{sample}", "{assembler}-{assembly_type}" , "contigs_table.tsv"
         ),
     input:
-        get_contigs,
+        os.path.join(RESDIR , "{sample}", "{assembler}-{assembly_type}" , "contigs.fasta" )
     run:
         contig = 0
         with open(str(output.tsv),"w") as tblout:
@@ -66,14 +74,15 @@ rule reformat_contigs:
                     for line in streamin.readlines():
                         if line.startswith(">"):
                             contig+=1
-                            contigid = "c_%i" % contig
-                            fastaout.write( ">%s\n" % contigid )
-                            tblout.write( "%s\t%s\n" %  ( line[1:] , contigid ) )
+                            contigid = "c_{}".format(contig)
+                            fastaout.write( ">{}\n".format(contigid) )
+                            tblout.write( "{}\t{}\t{}\n".format( line[1:] , contigid , wildcards.sample) )
                         else:
                             fastaout.write( line )
 
 
-include: "./rules/anvio.smk"
+#include: "./rules/anvio.smk"
+#include: "./rules/polishing.smk"
 include: "./rules/contigs_quality.smk"
 include: "./rules/bowtie2.smk"
 include: "./rules/megahit.smk"

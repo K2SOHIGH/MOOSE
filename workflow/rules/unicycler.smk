@@ -1,23 +1,29 @@
-def get_unicycler_input(wildcards , input_type ,fun): 
-    if fun( wildcards , INPUTS ):
-        return os.path.join(RESDIR , wildcards.sample , "unicycler" , "%s.tmp" % input_type)
-    else:
-        return []
+def get_unicycler_input(wildcards): 
+    files = []
+    for read_type in ["left_reads","right_reads","single_reads","long_reads"]:
+        if utils.get_reads( INPUTS[wildcards.sample] , read_type ):
+            files.append(os.path.join(RESDIR , wildcards.sample , "unicycler" , "%s.tmp" % read_type))
+    return files
+
+
+
+rule rename_unicycler_assembly:
+    output:
+        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}" ,"contigs.fasta")
+    input:
+        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}","assembly.fasta")
+    shell:
+        "mv {input} {output}"
+
 
 rule unicycler:
     output:
-        os.path.join( RESDIR , "{sample}" "unicycler","assembly.fasta")
+        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}" ,"assembly.fasta")
     input:
-        R1 = lambda wildcards : get_unicycler_input(wildcards,"R1",utils.get_forward_reads),
-        R2 = lambda wildcards : get_unicycler_input(wildcards,"R2",utils.get_reverse_reads),
-        UR = lambda wildcards : get_unicycler_input(wildcards,"unpaired",utils.get_single_reads),
-        LR = lambda wildcards : get_unicycler_input(wildcards,"longread",utils.get_long_reads),
+        get_unicycler_input,
     params:
-        r1inp = lambda wildcards, input: "-1 %s" % input.R1 if input.R1 else "",
-        r2inp = lambda wildcards, input: "-2 %s" % input.R2 if input.R2 else "",
-        urinp = lambda wildcards, input: "-s %s" % input.UR if input.UR else "",
-        lrinp = lambda wildcards, input: "-l %s" % input.LR if input.LR else "",
-        outdir = os.path.join( RESDIR , "{sample}" "unicycler"),
+        unicycler_input = lambda wildcards,input : utils.set_unicycler_input_cmdline(input),
+        outdir = os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}"),
         unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",
     threads:
         20
@@ -30,29 +36,20 @@ rule unicycler:
         "../envs/unicycler-0.5.0.yaml"
     shell:
         "unicycler "
-        "{params.r1inp} "
-        "{params.r2inp} "
-        "{params.urinp} "
-        "{params.lrinp} "
+        "{params.unicycler_input} "
         "-o {params.outdir} "    
         "--threads {threads} "
         "{params.unicycler_cmd}"
 
 
-def unicycler_input(wildcards):
-    if wildcards.reads == "R1":
-        return utils.get_forward_reads(wildcards , INPUTS )
-    if wildcards.reads == "R2":
-        return utils.get_reverse_reads(wildcards , INPUTS )
-    if wildcards.reads == "unpaired":
-        return utils.get_single_reads( wildcards , INPUTS )
-    if wildcards.reads == "longread":
-        return utils.get_long_reads( wildcards , INPUTS )
+
+def concat_unicycler_input (wildcards):
+    return utils.get_reads( INPUTS[wildcards.sample] , wildcards.reads)
 
 rule unicycler_concat_input:
     output:
         temp(os.path.join(RESDIR,"{sample}","unicycler","{reads}.tmp")),
     input:
-        unicycler_input
+        concat_unicycler_input,            
     shell:        
         "cat {input} > {output} "
