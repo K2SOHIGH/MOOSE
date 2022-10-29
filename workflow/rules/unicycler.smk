@@ -26,7 +26,7 @@ rule unicycler:
         outdir = os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}"),
         unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",
     threads:
-        20
+        10
     resources:
         mem = 200000,
         mem_mb = 200000, 

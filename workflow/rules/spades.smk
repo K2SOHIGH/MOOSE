@@ -9,7 +9,7 @@ rule spades:
     conda:
         "../envs/spades-3.15.5.yaml"
     threads:
-        20
+        10
     shell:
         "spades.py "
         "{params.spades_input} "
