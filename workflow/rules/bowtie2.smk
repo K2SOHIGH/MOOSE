@@ -1,16 +1,26 @@
-
-rule sort_and_index_binning:
+rule mapping_expand_products:
+    output:
+        touch(
+            temp(
+                os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "mapping.done")
+            ),
+        )
+    input:
+        get_sro_mapping_products,
+        get_srf_lrf_mapping_products,
+ 
+rule mapping_sort_and_index:
     """
     """
     output:
-        os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.sorted.bam"),
-        os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.sorted.bam.bai"),
+        os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam"),
+        os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam.bai"),
     input:
-        os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.filtered.sam")
+        os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.filtered.sam")
     threads: 1
     priority: 90
     conda:
-        "../envs/samtools.yaml"
+        "../envs/samtools.1.16.1.yaml"
     shell:
         "samtools view -u {input} | "
         "samtools sort "
@@ -18,18 +28,18 @@ rule sort_and_index_binning:
         "-o {output[0]} "
         "&& samtools index "
         "{output[0]} "
-        #"&> {log} "
-
-
-rule filter_bam:
+        
+rule mapping_filter_bam:
     """
         Filter reads based on mapping quality and identity.
         Output is temporary because it will be sorted.
     """
     output:
-        temp(os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.filtered.sam")),
+        temp(
+            os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.filtered.sam")
+        ),
     input:
-        os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.sam"),
+        os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sam"),
     conda:
         "../envs/bamutils.yaml"
     params:
@@ -38,42 +48,33 @@ rule filter_bam:
         min_len = config["min_len"],
         pp = config["properly_paired"],
     script:
-        "scripts/bamprocess.py"
+        "../scripts/bamprocess.py"
 
-def bowtie2_input_read(reads_type:str,reads:list):
-    if reads:
-        if reads_type == "R1":
-            return "-1 %s" % ",".join(reads)
-        elif reads_type == "R2":
-            return "-2 %s" % ",".join(reads)
-        else:
-            return "-U %s" % ",".join(reads)
-    return []
-
-rule short_read_mapping:
+rule mapping_bowtie2:
     '''
         required by summarize_contig_depth
     '''
     output:
-        temp(os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}" , "read_mapping"  , "{sample}.sam")),
+        temp(
+            os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sam"),
+        )
     input:
         expand(
-            os.path.join(RESDIR , "{{sample}}", "{{assembler_assembly_type}}", "bowtie2_index.{idx}")
-            , idx = ["1.bt2", "2.bt2", "3.bt2", "4.bt2", "rev.1.bt2","rev.2.bt2"]
+            os.path.join(RESDIR , SAMPLES_DIR , "{{sample}}", "{{assembly_type}}" , "{{assembler}}" , "index" , "bowtie2_index.{idx}"),
+            idx = ["1.bt2", "2.bt2", "3.bt2", "4.bt2", "rev.1.bt2","rev.2.bt2"]
         ),
-        R1 = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "left_reads" ),
-        R2 = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "right_reads" ),
-        #UR = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "single_reads" ),
-        #LR = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "long_reads" ),   
+        R1 = lambda wildcards : get_qc_reads(wildcards, wildcards.mapper ,"forward"),
+        R2 = lambda wildcards : get_qc_reads(wildcards, wildcards.mapper ,"reverse"),
+        SR = lambda wildcards : get_qc_reads(wildcards, wildcards.mapper ,"single" ),
     params:
-        r1inp = lambda wildcards, input: bowtie2_input_read("R1",input.R1),
-        r2inp = lambda wildcards, input: bowtie2_input_read("R2",input.R2),
-        #urinp = lambda wildcards, input: bowtie2_input_read("U",input.UR + input.LR),
-        index = os.path.join(RESDIR , "{sample}", "{assembler_assembly_type}", "bowtie2_index"),
+        r1inp = lambda wildcards, input: "-1 ".join(input.R1) if input.R1 else "",
+        r2inp = lambda wildcards, input: "-2 ".join(input.R2) if input.R1 else "",
+        srinp = lambda wildcards, input: "-U ".join(input.SR) if input.R1 else "",
+        index = os.path.join(RESDIR , SAMPLES_DIR , "{{sample}}", "{{assembly_type}}" , "{{assembler}}" , "index" , "bowtie2_index"),
     threads: 15
     priority: 80
     conda:
-        "../envs/bowtie2.yaml"
+        "../envs/bowtie2.2.4.5.yaml"
     shell:
         "bowtie2 "
         "-p {threads} "             # number of parallel threads
@@ -81,26 +82,24 @@ rule short_read_mapping:
         "-x {params.index} "       # index for mapping
         "{params.r1inp} "
         "{params.r2inp} "
-        #"{params.urinp} "
+        "{params.srinp} "
         "-S {output} "
 
 
-rule contigs_index:
+rule mapping_bowtie2_index:
     output:
         expand(
-            os.path.join(RESDIR , "{{sample}}", "{{assembler_assembly_type}}" , "bowtie2_index.{idx}")
-            , idx = ["1.bt2", "2.bt2", "3.bt2", "4.bt2", "rev.1.bt2","rev.2.bt2"]
-        ),     
+            os.path.join(RESDIR , SAMPLES_DIR , "{{sample}}", "{{assembly_type}}" , "{{assembler}}" , "index" , "bowtie2_index.{idx}"),
+            idx = ["1.bt2", "2.bt2", "3.bt2", "4.bt2", "rev.1.bt2","rev.2.bt2"]
+        ),   
     input:
         contigs = os.path.join( 
-            RESDIR , "{sample}", "{assembler_assembly_type}" ,  "final_contigs_reformat.fasta"
+            RESDIR , SAMPLES_DIR,  "{sample}", "{assembly_type}" , "{assembler}" ,  "final_assembly.fasta"
         ),
     params:
-        index = os.path.join(
-                RESDIR , "{sample}", "{assembler_assembly_type}" , "bowtie2_index"
-            ),        
+        index = os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "index" , "bowtie2_index"),        
     conda:
-        "../envs/bowtie2.yaml"
+        "../envs/bowtie2.2.4.5.yaml"
     shell:
         "bowtie2-build {input.contigs} {params.index}"
 

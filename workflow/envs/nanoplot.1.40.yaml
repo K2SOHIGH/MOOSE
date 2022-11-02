@@ -4,5 +4,4 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - nanoplot
-prefix: /Users/maxime/miniconda3/envs/nanoplot
+  - nanoplot=1.40.2

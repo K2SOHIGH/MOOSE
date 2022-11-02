@@ -1,35 +1,56 @@
-
-rule rename_megahit_assembly:
+rule assembly_rename_megahit:
     output:
-        os.path.join( RESDIR , "{sample}" , "megahit-{assembly_type}" ,"contigs.fasta")
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "contigs.fa" )
     input:
-        os.path.join( RESDIR , "{sample}" , "megahit-{assembly_type}" ,"final.contigs.fa")
-    wildcard_constraints:
-        assembly_type = "short_reads",    
+        fa = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "final.contigs.fa"),
+        flag = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "assembly_graphs"),        
     shell:
-        "mv {input} {output}"
+        "mv {input.fa} {output}"
 
-rule megahit:
+
+rule assembly_with_megahit_graph:
     output:
-        os.path.join(RESDIR , "{sample}", "megahit-{assembly_type}", "final.contigs.fa")
+        directory(
+            os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "assembly_graphs")
+        )
     input:
-        R1 = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "left_reads" ),
-        R2 = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "right_reads" ),
-        UR = lambda wildcards : utils.get_reads( INPUTS[wildcards.sample] , "single_reads" ),
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "final.contigs.fa")
+    params:
+        intermediate_contigs = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "intermediate_contigs")
+    shell:
+        'for k in $(ls {params.intermediate_contigs}/*.contigs.fa | grep -v "final") ; do '
+        '   megahit_toolkit contig2fastg $(echo $k | cut -d "." -f1 | sed "s/.*\/k//g") $k > {output}/$k.fastg ; '
+        'done '
+    
+
+rule assembly_with_megahit:
+    output:
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "final.contigs.fa")
+    input:
+        R1 = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "forward"),
+        R2 = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "reverse"),
+        SR = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "single"),
     conda:
-        "../envs/megahit.yaml"
+        "../envs/megahit.1.2.9.yaml"
     log:
-        os.path.join(RESDIR , "{sample}", "megahit-{assembly_type}", "megahit.log")
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "megahit.log")
     threads:
         10
     params:
-        megahit_inputs = lambda wildcards: utils.set_megahit_input_cmdline(INPUTS[wildcards.sample]),
-        outdir = os.path.join( RESDIR , "{sample}" , "megahit-{assembly_type}" ),
+        megahit_forward_reads = lambda wildcards,input: "-1 {}".format(",".join(input.R1)) if input.R1 else "",
+        megahit_reverse_reads = lambda wildcards,input: "-2 {}".format(",".join(input.R2)) if input.R2 else "",
+        megahit_single_reads = lambda wildcards,input: "-r {}".format(",".join(input.SR))  if input.SR else "",
+        outdir = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit"),
         megahit_cmd = utils.parse_megahit_cmdline(config["MEGAHIT"]) if config["MEGAHIT"] else "",
+        kmers = config["KLIST"],
     shell:
-        "rm -r {params.outdir} && "
-        "megahit "
-        "{params.megahit_inputs} "
-        "-o {params.outdir} "
-        "{params.megahit_cmd} "
-        "-t {threads} > {log}"
+        "rm -r {params.outdir} &&   "
+        "megahit                    "
+        "{params.kmers}             "
+        "{params.megahit_forward_reads} "
+        "{params.megahit_reverse_reads} "
+        "{params.megahit_single_reads}  "
+        "-o {params.outdir}         "
+        "{params.megahit_cmd}       "
+        "-t {threads} > {log}       "
+        

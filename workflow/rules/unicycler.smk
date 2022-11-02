@@ -1,30 +1,29 @@
-def get_unicycler_input(wildcards): 
-    files = []
-    for read_type in ["left_reads","right_reads","single_reads","long_reads"]:
-        if utils.get_reads( INPUTS[wildcards.sample] , read_type ):
-            files.append(os.path.join(RESDIR , wildcards.sample , "unicycler" , "%s.tmp" % read_type))
-    return files
-
-
-
-rule rename_unicycler_assembly:
+rule assembly_rename_unicycler:
     output:
-        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}" ,"contigs.fasta")
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler" , "contigs.fa" )
     input:
-        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}","assembly.fasta")
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler" , "assembly.fasta" )
     shell:
         "mv {input} {output}"
 
 
-rule unicycler:
+rule assembly_with_unicycler:
     output:
-        os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}" ,"assembly.fasta")
-    input:
-        get_unicycler_input,
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler" , "assembly.fasta" )
+    input:        
+        R1 = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "forward"), "forward"  ),
+        R2 = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "reverse"), "reverse"  ),
+        SR = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "single" ), "single"  ),
+        LR = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "long"), "long"  ),        
     params:
-        unicycler_input = lambda wildcards,input : utils.set_unicycler_input_cmdline(input , wildcards.assembly_type),
-        outdir = os.path.join( RESDIR , "{sample}" , "unicycler-{assembly_type}"),
-        unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",
+        unicycler_paired_end_reads = lambda wildcards, input : "-1 {} -2 {}".format(input.R1,input.R2) if wildcards.assembly_type in ["SRO","SRF"] else "",
+        unicycler_single_end_reads = lambda wildcards, input : "-s {}".format(input.SR) if wildcards.assembly_type in ["SRO","SRF"] else "",
+        unicycler_long_reads       = lambda wildcards, input : "-l {}".format(input.LR) if input.LR else "",
+        outdir  = os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler"),
+        unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",        
+        kmers = config["KLIST"],
+    log:
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler" , "mgw_unicycler.log" )
     threads:
         10
     resources:
@@ -34,22 +33,25 @@ rule unicycler:
         cpus_per_task = 20,
     conda:
         "../envs/unicycler-0.5.0.yaml"
-    shell:
+    shell:        
         "unicycler "
-        "{params.unicycler_input} "
+        "{params.kmers} "
+        "{params.unicycler_paired_end_reads} "
+        "{params.unicycler_single_end_reads} "
+        "{params.unicycler_long_reads} "
         "-o {params.outdir} "    
-        "--threads {threads} "
-        "{params.unicycler_cmd}"
+        "--threads 10 "        
+        "{params.unicycler_cmd} > {log}"
 
 
-
-def concat_unicycler_input (wildcards):
-    return utils.get_reads( INPUTS[wildcards.sample] , wildcards.reads)
-
-rule unicycler_concat_input:
+rule assembly_concat_input_unicycler:
     output:
-        temp(os.path.join(RESDIR,"{sample}","unicycler","{reads}.tmp")),
+        temp(
+            os.path.join(
+                RESDIR, SAMPLES_DIR, "{sample}", "tmp" , "{reads}_tmp.fq.gz"
+            ),
+        )
     input:
-        concat_unicycler_input,            
+        lambda wildcards: get_qc_reads(wildcards, wildcards.sample, wildcards.reads),        
     shell:        
         "cat {input} > {output} "

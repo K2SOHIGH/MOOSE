@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup , find_packages
-from os import path
+import os
+import glob
+
+this_directory = os.path.abspath(os.path.dirname(__file__))
 
 
-this_directory = path.abspath(path.dirname(__file__))
-
-
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
+    
 
 setup(
     name='mgw',
@@ -29,9 +30,8 @@ setup(
     #     "pyyaml==6.0",
     #     "pandas",        
     # ],    
-    include_package_data=True,
-    entry_points = {
-        'console_scripts': ['mgw = metagenomics_workflow:cli'],
-    },
+    include_package_data=True,    
+    scripts = [script for script in glob.glob("bin/*") if not os.path.basename(script).startswith("_") ],
+    py_modules = ["bin"],
     zip_safe=False
 )

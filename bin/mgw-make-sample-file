@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+import os
+import argparse
+import logging
+import glob
+import multiprocessing
+import yaml
+from workflow.utils import utils
+from workflow.utils import log
+
+logger = log.setlogger(__file__)
+    
+logger.setLevel(logging.INFO)
+logger.addHandler(
+    log.stream_handler(logging.INFO)
+)
+
+def get_args():
+    parser = argparse.ArgumentParser(
+        prog='mgw-assemble',
+        description='Assemble reads into assembly')
+
+    parser.add_argument('-i' , default= "." ,  type=str , help = "input directory")
+
+    parser.add_argument('-1' , dest= "r1",  default= "_1" ,  type=str , help = "forward reads prefix")
+
+    parser.add_argument('-2' , dest= "r2",  default = "_2" , type=str , help = "reverse reads prefix")
+
+    parser.add_argument('-s' , default = None , type=str , help = "single reads prefix ")
+
+    parser.add_argument('-l' , default = None , type=str , help = "long reads prefix")
+
+    parser.add_argument('-lt' , '--longread-type', default = "nanopore" , 
+        choices=[ "nanopore" , "pacbio" ],
+        help = "specify longread source" )
+
+    parser.add_argument('-o', '--output'  , default = sys.stdout , help = "output file")
+    
+    args = parser.parse_args()
+    return args
+
+
+def glob_paired_end(samplesdir, forward_prefix , reverse_prefix):
+    forwards = sorted(glob.glob("{}/**/*{}*".format(samplesdir,forward_prefix)))
+    reverses = sorted(glob.glob("{}/**/*{}*".format(samplesdir,forward_prefix)))
+    paired_end = {}
+    if len(forwards)==len(reverses):
+        for f,r in zip(forwards,reverses):
+            f = os.path.abspath(f)
+            r = os.path.abspath(r)
+
+            sid = os.path.dirname(f).split('/')[-1]
+            if sid not in paired_end : 
+                paired_end[sid] = []
+            paired_end[sid].append("{};{}".format(f,r))
+    return paired_end
+        
+def glob_others(samplesdir,prefix):
+    reads = {}
+    for f in sorted(glob.glob("{}/**/*{}*".format(samplesdir,prefix))):
+        sid = os.path.dirname(f).split('/')[-1]
+        if sid not in reads : 
+            reads[sid] = []
+        reads[sid].append(
+            os.path.abspath(f)
+        )
+    return reads
+
+def _merge(pe,se,lr,lrt):
+    samples = {}
+    for sid in set(list(pe.keys()) + list(se.keys()) + list(lr.keys())):
+        samples[sid]={"reads":{}}
+    
+        if sid in pe:
+            samples[sid]["reads"].update({ "paired_end":pe[sid] } )
+        if sid in se:
+            samples[sid]["reads"].update({ "single_reads":se[sid] } )
+        if sid in lr:
+            samples[sid]["reads"].update({ "long_reads":lr[sid] } )
+            samples[sid].update({"long_reads_type" : lrt})
+    return samples
+
+
+def make_sample_file():
+    args = get_args()
+    pe = glob_paired_end(args.i , args.r1, args.r2)
+    se = glob_others(args.i , args.s)
+    lr = glob_others(args.i , args.l)
+    samples = _merge(pe,se,lr,args.longread_type)
+
+    stream = args.output
+    if isinstance(stream,str):
+        stream = open(stream,"w")
+
+    yaml.dump(samples,stream)
+
+if __name__ == "__main__":    
+    make_sample_file()
+
+
+
+

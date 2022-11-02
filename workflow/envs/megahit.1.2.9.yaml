@@ -4,5 +4,5 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - megahit
+  - megahit=1.2.9
 prefix: /Users/maxime/miniconda3/envs/megahit

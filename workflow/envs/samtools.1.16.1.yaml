@@ -4,5 +4,4 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - samtools
-prefix: /home/mmillet/miniconda3/envs/samtools
+  - samtools=1.16.1

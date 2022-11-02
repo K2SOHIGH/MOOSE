@@ -4,5 +4,4 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - bowtie2
-prefix: /home/mmillet/miniconda3/envs/bowtie2
+  - bowtie2=2.4.5

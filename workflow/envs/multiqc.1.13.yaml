@@ -4,5 +4,4 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - multiqc
-prefix: /Users/maxime/miniconda3/envs/multiqc
+  - multiqc=1.13

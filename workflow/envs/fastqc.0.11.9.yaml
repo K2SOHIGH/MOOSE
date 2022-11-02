@@ -4,5 +4,4 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - fastqc
-prefix: /Users/maxime/miniconda3/envs/fastQC
+  - fastqc=0.11.9

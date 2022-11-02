@@ -1,14 +1,13 @@
-rule quast:
+rule assembly_quast:
     output:
-        os.path.join(RESDIR, "{sample}" , "contigs-qc","report.html"),
+        os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigs-qc", "{qc_contigs}_contigs_report.html"),
     input:
-        expand(
-            os.path.join(
-                RESDIR , "{{sample}}", "{assembler_assembly_type}" ,  "final_contigs_reformat.fasta"
-            ), assembler_assembly_type = ASSEMBLER_AND_TYPES,
-        )        
+        get_sro_assembly_products,
+        get_srf_lrf_assembly_products,
+    conda:
+        "../envs/quast.5.2.0.yaml"
     params:
-        outdir = os.path.join(RESDIR, "{sample}" , "contigs-qc"),
-        labels = ",".join(ASSEMBLER_AND_TYPES),
+        outdir = os.path.join(RESDIR, SAMPLES_DIR, "{sample}","contigs-qc"),
+        labels = lambda wildcards,input : ",".join([ "_".join(os.path.dirname(i).split("/")[-2:])  for i in input if i]),
     shell:
         "quast -o {params.outdir} {input} -l {params.labels}"
