@@ -17,6 +17,8 @@ rule assembly_with_megahit_graph:
         os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "final.contigs.fa")
     params:
         intermediate_contigs = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "intermediate_contigs")
+    conda:
+        "../envs/megahit.1.2.9.yaml"
     shell:
         'mkdir -p {output} && '
         'for k in $(ls {params.intermediate_contigs}/*.contigs.fa | grep -v "final") ; do '
