@@ -67,10 +67,10 @@ rule mapping_bowtie2:
         R2 = lambda wildcards : get_qc_reads(wildcards, wildcards.mapper ,"reverse"),
         SR = lambda wildcards : get_qc_reads(wildcards, wildcards.mapper ,"single" ),
     params:
-        r1inp = lambda wildcards, input: "-1 ".join(input.R1) if input.R1 else "",
-        r2inp = lambda wildcards, input: "-2 ".join(input.R2) if input.R1 else "",
-        srinp = lambda wildcards, input: "-U ".join(input.SR) if input.R1 else "",
-        index = os.path.join(RESDIR , SAMPLES_DIR , "{{sample}}", "{{assembly_type}}" , "{{assembler}}" , "index" , "bowtie2_index"),
+        r1inp = lambda wildcards, input: "-1 " + " -1 ".join(input.R1) if input.R1 else "",
+        r2inp = lambda wildcards, input: "-2 " + " -2 ".join(input.R2) if input.R1 else "",
+        srinp = lambda wildcards, input: "-U " + " -U ".join(input.SR) if input.R1 else "",
+        index = os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "index" , "bowtie2_index"),
     threads: 15
     priority: 80
     conda:
