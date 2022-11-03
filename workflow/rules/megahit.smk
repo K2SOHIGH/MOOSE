@@ -11,13 +11,14 @@ rule assembly_rename_megahit:
 rule assembly_with_megahit_graph:
     output:
         directory(
-            os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "assembly_graphs")
+            os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit", "assembly_graphs")
         )
     input:
         os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "final.contigs.fa")
     params:
         intermediate_contigs = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "intermediate_contigs")
     shell:
+        'mkdir -p {output} && '
         'for k in $(ls {params.intermediate_contigs}/*.contigs.fa | grep -v "final") ; do '
         '   megahit_toolkit contig2fastg $(echo $k | cut -d "." -f1 | sed "s/.*\/k//g") $k > {output}/$k.fastg ; '
         'done '
@@ -44,7 +45,7 @@ rule assembly_with_megahit:
         megahit_cmd = utils.parse_megahit_cmdline(config["MEGAHIT"]) if config["MEGAHIT"] else "",
         kmers = "--k-list {}".format(config["KLIST"]) if config["KLIST"] else "",
     shell:
-        "rm -rf {params.outdir} &&   "
+        "rm -rf {params.outdir} &&  " # snakemake creating output colide with megahit output protection
         "megahit                    "
         "{params.kmers}             "
         "{params.megahit_forward_reads} "
