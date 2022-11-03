@@ -71,7 +71,7 @@ rule assembly:
     shell:
         "cat {input.contigs} > {output[1]} ; "
         "cat {input.bams} > {output[2]} ; "
-        "rm -rf {params.outdir} "        
+        "rm -rf {params.outdir} ; "        
         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} "
 
 rule assembly_make_anvio_bams_file:
