@@ -114,7 +114,7 @@ rule assembly_sample_report:
         "envs/multiqc.1.13.yaml"     
     params:
         multiqc_target = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
-        outdir = RESDIR,
+        outdir = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
         name = "assembly_report.html",
     shell:
         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name}"
