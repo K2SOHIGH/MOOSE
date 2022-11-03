@@ -133,10 +133,10 @@ rule assembly_filtering:
         txt =  os.path.join(
             RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "{assembler}" , "contigs_filterout.txt"
         ),
-    params:
-        min_contig_len = config["min_contig_length"] if "min_contig_length" in config else 1000 ,
     input:
         os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "{assembler}" , "contigs.fa" )
+    params: 
+        min_contig_len = int(config["min_contig_length"]) if "min_contig_length" in config else 1000 ,
     run:
         contig = 0
         total_contigs = 0
@@ -148,10 +148,10 @@ rule assembly_filtering:
                         sequence = ""
                         for line in streamin.readlines():
                             if line.startswith(">"):
-                                based_header = line.strip().replace(">")
+                                based_header = line.strip().replace(">","")
                                 total_contigs += 1
                                 if sequence:
-                                    if len(sequence)>params.min_contig_len:
+                                    if len(sequence)>1000:#params.min_contig_len
                                         contigid = "c_{}".format(contig) 
                                         fastaout.write( ">{}\n".format(contigid) )
                                         fastaout.write( "{}\n".format(sequence) )                                    
