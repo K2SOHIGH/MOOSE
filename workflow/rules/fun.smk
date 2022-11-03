@@ -9,14 +9,18 @@ from utils import sample
     FUNCTIONS
 """
 
+
+
 def get_sro_assembly_products(wildcards):
     """
 
     """
-    if wildcards.qc_contigs == 'raw':
-        file = "contigs.fa"
-    else:
-        file = "final_assembly.fasta"
+    file = "final_assembly.fasta"
+    if hasattr(wildcards , "qc_contigs"):
+        if wildcards.qc_contigs == 'raw':
+            file = "contigs.fa"
+    
+        
     if "SRO" in WORKFLOWS:
         if get_qc_reads(wildcards, wildcards.sample , "forward") or \
             get_qc_reads(wildcards, wildcards.sample , "single"):
@@ -30,11 +34,11 @@ def get_srf_lrf_assembly_products(wildcards):
     """
 
     """
-    if wildcards.qc_contigs == 'raw':
-        file = "contigs.fa"
-    else:
-        file = "final_assembly.fasta"
-
+    file = "final_assembly.fasta"
+    if hasattr(wildcards , "qc_contigs"):
+        if wildcards.qc_contigs == 'raw':
+            file = "contigs.fa"
+    
     wlr_workflows = [ w for w in WORKFLOWS if w != "SRO" ]
     
     if wlr_workflows and LR_ASSEMBLERS:
@@ -61,7 +65,7 @@ def get_srf_lrf_mapping_products(wildcards):
         if get_qc_reads(wildcards, wildcards.sample , "long"):        
             return expand(
                 os.path.join(RESDIR , SAMPLES_DIR , wildcards.sample , "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam"),
-                assembly_type = wlr_workflows , assembler = ASSEMBLERS , mapper = MAPPERS[wildcards.sample]
+                assembly_type = wlr_workflows , assembler = LR_ASSEMBLERS , mapper = MAPPERS[wildcards.sample]
             )
     return []    
 

@@ -128,7 +128,7 @@ def assemble():
 
     yaml.dump( configuration, open( CONFIGFILE ,"w" ) )
     
-    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/assembly.smk'))
+    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-assembly.smk'))
 
     cmd = """
         snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs} --conda-prefix {cprefix} 

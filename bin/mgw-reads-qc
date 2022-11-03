@@ -76,7 +76,7 @@ def read_qc():
 
     yaml.dump( configuration, open( CONFIGFILE ,"w" ) )
     
-    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/reads-qc.smk'))
+    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-reads-qc.smk'))
 
     cmd = """
         snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs} --conda-prefix {cprefix} 

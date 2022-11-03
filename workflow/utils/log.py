@@ -15,7 +15,8 @@ class CustomFormatter(logging.Formatter):
     white = "\u001b[37m"
 
 
-    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    #format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s" # (%(filename)s:%(lineno)d)"
 
     FORMATS = {
         logging.DEBUG: reset + format + reset,

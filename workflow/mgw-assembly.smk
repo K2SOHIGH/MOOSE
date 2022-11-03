@@ -25,7 +25,6 @@ WORKFLOWS = config["WORKFLOWS"]
 SAMPLES = sample.Samples(config["INPUT"])
 SAMPLES_W_LR = get_sample_with_long_reads()
 
-
 """
     SETUP
 """
@@ -47,12 +46,22 @@ onerror:
 
 rule assembly:
     output:                
-        os.path.join(RESDIR  ,"assembly_report.html")            
+        os.path.join(RESDIR  ,"assembly_report.html"),  
+        os.path.join(RESDIR  ,"assembly.yaml"),         
+        os.path.join(RESDIR  ,"bams.yaml"),         
     input:
         expand(
             os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
             sample = SAMPLES.samples,
-        )
+        ),
+        contigs = expand(
+            os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml"),
+            sample = SAMPLES.samples,
+        ),
+        bams = expand(
+            os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml"),
+            sample = SAMPLES.samples,
+        ),
     conda:
         "envs/multiqc.1.13.yaml"     
     params:
@@ -60,9 +69,38 @@ rule assembly:
         outdir = RESDIR,
         name = "assembly_report.html",
     shell:
-        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name}"
+        "cat {input.contigs} > {output[1]} ; "
+        "cat {input.bams} > {output[2]} ; "
+        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} "
 
-    
+rule assembly_make_anvio_bams_file:
+    output:
+        temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml")),
+    input:
+        get_sro_mapping_products,
+        get_srf_lrf_mapping_products,            
+    run:
+        bams_dict = {}
+        for fi in input:
+            b_id = os.path.basename(fi).replace(".sorted.bam","")
+            bams_dict[b_id] = os.path.abspath(fi)
+        yaml.dump( { wildcards.sample : bams_dict  } ,  open(str(output) , 'w' ) ),
+
+
+
+rule assembly_make_anvio_contigs_file:
+    output:
+        temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml")),
+    input:
+        get_sro_assembly_products,
+        get_srf_lrf_assembly_products,            
+    run:
+        assembly_dict = {}
+        for fi in input:
+            a_id = "_".join(os.path.dirname(fi).split("/")[-2:])
+            assembly_dict[a_id] = os.path.abspath(fi)
+        yaml.dump( { wildcards.sample : assembly_dict  } ,  open(str(output) , 'w' ) ),
+
 rule assembly_sample_report:
     output:
         os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
