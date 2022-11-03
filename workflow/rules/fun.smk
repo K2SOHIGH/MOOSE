@@ -119,8 +119,7 @@ def extend_with_coassembly():
 def validate_samples():    
     wlogger.info("Number of sample(s) : {}".format(len(SAMPLES.samples))    )
     wlogger.info("Validating SAMPLE files and configuration ...")    
-    for sid, SAMPLE in SAMPLES.samples.items():   
-        print(sid,SAMPLE)     
+    for sid, SAMPLE in SAMPLES.samples.items():           
         if "auto" not in WORKFLOWS:             
             if (len(SAMPLE.forward)==0 and len(SAMPLE.single)==0) and ("SRO" in WORKFLOWS or "hybrid" in WORKFLOWS) :
                 wlogger.error("Can't perform SRO, SRF neither LRF assembly if you don't provide short reads [{}]".format(sid))

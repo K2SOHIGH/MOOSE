@@ -42,7 +42,7 @@ rule assembly_with_megahit:
         megahit_single_reads = lambda wildcards,input: "-r {}".format(",".join(input.SR))  if input.SR else "",
         outdir = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit"),
         megahit_cmd = utils.parse_megahit_cmdline(config["MEGAHIT"]) if config["MEGAHIT"] else "",
-        kmers = config["KLIST"],
+        kmers = "--k-list {}".format(config["KLIST"]) if config["KLIST"] else "",
     shell:
         "rm -r {params.outdir} &&   "
         "megahit                    "
