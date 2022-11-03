@@ -33,7 +33,7 @@ rule assembly_with_megahit:
     conda:
         "../envs/megahit.1.2.9.yaml"
     log:
-        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit" , "megahit.log")
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "megahit.log")
     threads:
         10
     params:
@@ -44,7 +44,7 @@ rule assembly_with_megahit:
         megahit_cmd = utils.parse_megahit_cmdline(config["MEGAHIT"]) if config["MEGAHIT"] else "",
         kmers = "--k-list {}".format(config["KLIST"]) if config["KLIST"] else "",
     shell:
-        "rm -r {params.outdir} &&   "
+        "rm -rf {params.outdir} &&   "
         "megahit                    "
         "{params.kmers}             "
         "{params.megahit_forward_reads} "
