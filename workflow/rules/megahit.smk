@@ -20,7 +20,7 @@ rule assembly_with_megahit_graph:
     shell:
         'mkdir -p {output} && '
         'for k in $(ls {params.intermediate_contigs}/*.contigs.fa | grep -v "final") ; do '
-        '   megahit_toolkit contig2fastg $(echo $k | cut -d "." -f1 | sed "s/.*\/k//g") $k > {output}/$k.fastg ; '
+        '   megahit_toolkit contig2fastg $(echo $k | cut -d "." -f1 | sed "s/.*\/k//g") $k > $k.fastg ; '
         'done '
     
 
@@ -54,4 +54,3 @@ rule assembly_with_megahit:
         "-o {params.outdir}         "
         "{params.megahit_cmd}       "
         "-t {threads} > {log}       "
-        
