@@ -51,6 +51,7 @@ rule reads_qc:
 rule reads_qc_multiqc:
     output:
         os.path.join(RESDIR , SAMPLES_DIR, "{sample}" , "qc_reads" ,"multiqc_qc_reads_report.html"),
+        
     input:
         LRQC = lambda wildcards: os.path.join( RESDIR , SAMPLES_DIR, "{sample}" , "qc-reads" , "nanoplot" ) if SAMPLES.get_sample_by_id(wildcards.sample).long else [],
         SRQC = lambda wildcards: os.path.join( RESDIR , SAMPLES_DIR, "{sample}" , "qc-reads" , "nanoplot" ) if SAMPLES.get_sample_by_id(wildcards.sample).forward or SAMPLES.get_sample_by_id(wildcards.sample).single else [],
@@ -58,7 +59,7 @@ rule reads_qc_multiqc:
         "envs/multiqc.1.13.yaml"
     params:
         multiqc_target = os.path.join(RESDIR,  SAMPLES_DIR , "{sample}" , "qc-reads"),
-        outdir = RESDIR,
+        outdir = os.path.join(RESDIR , SAMPLES_DIR, "{sample}" , "qc_reads"),
         name = "multiqc_qc_reads_report.html",
     shell:
         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name}"
