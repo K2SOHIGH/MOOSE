@@ -106,8 +106,8 @@ rule assembly_sample_report:
         os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
     input:          
         expand(
-            os.path.join(RESDIR, SAMPLES_DIR, "{{sample}}" , "contigs-qc", "{qc_contigs}_contigs_report.html"),
-            qc_contigs = ["raw","afterqc"]
+            os.path.join(RESDIR, SAMPLES_DIR, "{{sample}}" , "{qc_contigs}-contigs-qc", "report.html"),
+            qc_contigs = ["raw","filtered"]
         ),
         os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "mapping.done"),
     conda:
