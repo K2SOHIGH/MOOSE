@@ -119,8 +119,7 @@ def format_spades_paired_end_inputs(wildcards,input):
     if len(input.R1) > 1 and len(input.R2) > 1:
         shorts = zip(input.R1,input.R2)
         cpt = 1
-        for r1,r2 in shorts:       
-                
+        for r1,r2 in shorts:                       
             paired_end_reads += "--{prefix}{cpt}-1 {r1} --{prefix}{cpt}-2 {r2} ".format(
                 prefix = "pe",
                 cpt = cpt,
@@ -155,22 +154,31 @@ def format_spades_single_end_inputs(wildcards,input):
         return ""
     return single_end_reads
     
-
 def format_spades_long_reads_inputs(wildcards,input):
     long_reads = ""
-    if len(input.LR) > 1:        
-        wlogger.error("Multiple longreads files are not supported by SPADES")
+    long_reads_type = SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type
+    if long_reads_type not in ["nanopore","pacbio"]:
+        wlogger.error("long reads type should be either nanopore or pacbio. ")
         exit(-1)
-    elif len(input.LR) == 1:
-        if SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "nanopore":
-            long_reads = "--nanopore {}".format(input.LR)        
-        elif SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "pacbio":
-            long_reads = "--pacbio {}".format(input.LR)        
-        else:
-            return ""
-    else:
-        return ""
+    for lr in input.LR:        
+        long_reads += "--{} {} ".format(long_reads_type, lr)        
     return long_reads 
+
+# def format_spades_long_reads_inputs(wildcards,input):
+#     long_reads = ""
+#     if len(input.LR) > 1:        
+#         wlogger.error("Multiple longreads files are not supported by SPADES")
+#         exit(-1)
+#     elif len(input.LR) == 1:
+#         if SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "nanopore":
+#             long_reads = "--nanopore {}".format(input.LR)        
+#         elif SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "pacbio":
+#             long_reads = "--pacbio {}".format(input.LR)        
+#         else:
+#             return ""
+#     else:
+#         return ""
+#     return long_reads 
 
 def unicycler_get_reads(wildcards , reads , reads_type):    
     if reads:
