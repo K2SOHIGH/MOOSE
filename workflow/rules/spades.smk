@@ -1,7 +1,8 @@
+
+
 rule assembly_with_spades:
     output:        
-        os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades" , "contigs.fa"),
-        os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades" , "scaffold.fa"),
+        os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades" , "contigs.fa"),        
     input:
         R1 = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "forward"),
         R2 = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "reverse"),
@@ -29,5 +30,6 @@ rule assembly_with_spades:
         "{params.spades_single_end_reads} "
         "{params.spades_long_reads} "
         "-o {params.outdir} "        
-        "-t {threads} > {log}"
+        "-t {threads} > {log} && "
+        "mv {params.outdir}/contigs.fasta {output}"
 
