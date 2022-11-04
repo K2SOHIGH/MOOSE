@@ -14,7 +14,7 @@ rule assembly_with_spades:
         outdir = os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades"),
         spades_cmd = utils.parse_spades_cmdline(config["SPADES"]) if config["SPADES"] else "",
         assembly_mode = "--{}".format(config["MODE"]) if config["MODE"] else "",
-        kmers = config["KLIST"],
+        kmers = "-k {}".format(" ".join(config["KLIST"])) if config["KLIST"] else "" ,
     log:
         os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades" , "mgw_spades.log"),
     conda:

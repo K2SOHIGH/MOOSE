@@ -38,7 +38,7 @@ def get_args():
         choices=[ "SRO" , "SRF", "LRF" , "auto" ],
         help="assembly type you want to achieve. if auto is set , then assembly types will be infere from each sample based on their input files. If short and long reads are specified, then short_reads, long_reads and hybrid assembly will be ran" )
 
-    parser.add_argument('-k' , '--kmers', default = "77" , type=str , 
+    parser.add_argument('-k' , '--kmers', default = "77" , nargs='*' , 
         help="list of kmer length to use.")
 
     parser.add_argument('-m','--mode' , default = None, 
