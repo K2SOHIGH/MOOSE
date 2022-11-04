@@ -98,10 +98,7 @@ def assemble():
     logger.info("ConfigFile : {}".format( CONFIGFILE ))
     logger.info("ReadsFile : {}".format( READSFILE ))
 
-    if "all" in args.assemblers:
-        args.assemblers = ("megahit" , "unicycler", "spades")
-    logger.info("Assemblers choosen by user : \n\t - {}".format("\n\t - ".join(args.assemblers)) )
-    
+
     # Parsing input files : 
     INPUTS = yaml.load( open(args.input) , Loader = yaml.SafeLoader )
     

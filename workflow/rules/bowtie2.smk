@@ -6,8 +6,9 @@ rule mapping_expand_products:
             ),
         )
     input:
-        get_sro_mapping_products,
-        get_srf_lrf_mapping_products,
+        get_mapping_products,
+        # get_sro_mapping_products,
+        # get_srf_lrf_mapping_products,
  
 rule mapping_sort_and_index:
     """

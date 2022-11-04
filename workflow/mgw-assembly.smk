@@ -13,22 +13,38 @@ wlogger.addHandler(
 )
 
 """
-    CONFIGS and GLOBALS
+    SETUP
 """
+
 RESDIR = config["RESDIR"]
 SAMPLES_DIR = "SAMPLES"
 
-ASSEMBLERS = config["ASSEMBLERS"]
-LR_ASSEMBLERS = [a for a in ASSEMBLERS if a != "megahit"]
+products = {
+    "SRO": os.path.join(
+        RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "{file}" ),
+    "SRF": os.path.join(
+        RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "{assembler}" , "{file}" ),
+    "bams":os.path.join(
+        RESDIR , SAMPLES_DIR , "{sample}" , "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam"),
+}
 
-WORKFLOWS = config["WORKFLOWS"]
+
+
 SAMPLES = sample.Samples(config["INPUT"])
-SAMPLES_W_LR = get_sample_with_long_reads()
+#SAMPLES_W_LR = get_sample_with_long_reads()
 
-"""
-    SETUP
-"""
 wlogger.info("Grabing configuration and input files =°")
+ASSEMBLERS = config["ASSEMBLERS"]
+
+
+if "all" in ASSEMBLERS:
+    ASSEMBLERS = ["megahit" , "unicycler", "spades"]
+
+
+WORKFLOWS = setup_workflows(ASSEMBLERS)
+wlogger.info("workflows choosen by user  : \n\t- {}".format("\n\t- ".join(WORKFLOWS)))
+wlogger.info("Assemblers choosen by user : \n\t- {}".format("\n\t- ".join(ASSEMBLERS)) )
+    
 validate_samples()
 
 SAMPLES.samples.update( 
@@ -39,6 +55,7 @@ MAPPERS = parse_mappers()
 
 READS = SAMPLES.sample2reads()    
 wlogger.info("we can start assembling ! ")
+
 onstart:
     wlogger.info("Starting assembly WORKFLOW")
 onerror:
@@ -78,8 +95,9 @@ rule assembly_make_anvio_bams_file:
     output:
         temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml")),
     input:
-        get_sro_mapping_products,
-        get_srf_lrf_mapping_products,            
+        get_mapping_products,
+        # get_sro_mapping_products,
+        # get_srf_lrf_mapping_products,            
     run:
         bams_dict = {}
         for fi in input:
@@ -93,8 +111,9 @@ rule assembly_make_anvio_contigs_file:
     output:
         temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml")),
     input:
-        get_sro_assembly_products,
-        get_srf_lrf_assembly_products,            
+        get_assembly_products,
+        # get_sro_assembly_products,
+        # get_srf_lrf_assembly_products,            
     run:
         assembly_dict = {}
         for fi in input:

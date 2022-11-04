@@ -2,8 +2,7 @@ rule assembly_quast:
     output:
         os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "{qc_contigs}-contigs-qc", "report.html"),
     input:
-        get_sro_assembly_products,
-        get_srf_lrf_assembly_products,
+        get_assembly_products,        
     conda:
         "../envs/quast.5.2.0.yaml"
     params:

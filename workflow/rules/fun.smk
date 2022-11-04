@@ -9,65 +9,50 @@ from utils import sample
     FUNCTIONS
 """
 
+def setup_workflows(ASSEMBLERS):
+    #ASSEMBLERS = config["ASSEMBLERS"]
+    _WORKFLOWS = config["WORKFLOWS"]
+    _WORKFLOWS = [_ for _ in _WORKFLOWS if _ != "LRF"]    
+    WORKFLOWS = {}
+    for _ in _WORKFLOWS:
+        if _ == "SRO":
+            WORKFLOWS[_] = ASSEMBLERS
+        elif _ == "SRF":
+            WORKFLOWS[_] = [a  for a in ASSEMBLERS if a == "unicycler" or a == "spades" ]
+        elif _ == "LRF":
+            WORKFLOWS[_] = [a  for a in ASSEMBLERS if a == "miniasm" ]
+        else:
+            wlogger.error("{} ????".format(_))
+            exit(-1)
+    return WORKFLOWS
 
-
-def get_sro_assembly_products(wildcards):
-    """
-
-    """
+def get_assembly_products(wildcards):
     file = "final_assembly.fasta"
     if hasattr(wildcards , "qc_contigs"):
         if wildcards.qc_contigs == 'raw':
-            file = "contigs.fa"
-    
-        
-    if "SRO" in WORKFLOWS:
-        if get_qc_reads(wildcards, wildcards.sample , "forward") or \
-            get_qc_reads(wildcards, wildcards.sample , "single"):
-            return expand(
-                os.path.join(RESDIR, SAMPLES_DIR , "{{sample}}", "{assembly_type}" , "{assembler}" , file ),
-                assembly_type = "SRO" , assembler = ASSEMBLERS,
-            )
-    return []
+            file = "contigs.fa"    
+    assemblies = []
+    for workflow , assemblers in WORKFLOWS.items():
+        assemblies += expand( products[workflow] , 
+        sample = wildcards.sample , 
+        assembly_type = workflow ,
+        assembler = assemblers ,
+        file = file
+        )
+    return assemblies
 
-def get_srf_lrf_assembly_products(wildcards):
-    """
+def get_mapping_products(wildcards):
+    BAMS = []
+    for workflow , assemblers in WORKFLOWS.items():
+        BAMS += expand( products["bams"] , 
+            sample = wildcards.sample , 
+            assembly_type = workflow ,
+            assembler = assemblers ,
+            mapper = MAPPERS[wildcards.sample]
+        )
+    return BAMS
 
-    """
-    file = "final_assembly.fasta"
-    if hasattr(wildcards , "qc_contigs"):
-        if wildcards.qc_contigs == 'raw':
-            file = "contigs.fa"
-    
-    wlr_workflows = [ w for w in WORKFLOWS if w != "SRO" ]
-    
-    if wlr_workflows and LR_ASSEMBLERS:
-        if get_qc_reads(wildcards, wildcards.sample , "long"):            
-            return expand(
-                os.path.join(RESDIR, SAMPLES_DIR , "{{sample}}", "{assembly_type}" , "{assembler}" , file ),
-                assembly_type = wlr_workflows , assembler = LR_ASSEMBLERS,
-            )
-    return []
-
-def get_sro_mapping_products(wildcards):
-    if "SRO" in WORKFLOWS:
-        if get_qc_reads(wildcards, wildcards.sample , "forward") or \
-            get_qc_reads(wildcards, wildcards.sample , "single"):
-            return expand(
-                os.path.join(RESDIR , SAMPLES_DIR , wildcards.sample , "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam"),
-                assembly_type = "SRO" , assembler = ASSEMBLERS , mapper = MAPPERS[wildcards.sample]
-            )
-    return []
-
-def get_srf_lrf_mapping_products(wildcards):
-    wlr_workflows = [ w for w in WORKFLOWS if w != "SRO" ]
-    if  WORKFLOWS and LR_ASSEMBLERS:
-        if get_qc_reads(wildcards, wildcards.sample , "long"):        
-            return expand(
-                os.path.join(RESDIR , SAMPLES_DIR , wildcards.sample , "{assembly_type}" , "{assembler}" , "BAMs" , "{mapper}.sorted.bam"),
-                assembly_type = wlr_workflows , assembler = LR_ASSEMBLERS , mapper = MAPPERS[wildcards.sample]
-            )
-    return []    
+   
 
 def get_qc_reads(wildcards , sample_id , read_type):    
     sample = SAMPLES.get_sample_by_id(sample_id)
@@ -134,7 +119,8 @@ def format_spades_paired_end_inputs(wildcards,input):
     if len(input.R1) > 1 and len(input.R2) > 1:
         shorts = zip(input.R1,input.R2)
         cpt = 1
-        for r1,r2 in shorts:                
+        for r1,r2 in shorts:       
+                
             paired_end_reads += "--{prefix}{cpt}-1 {r1} --{prefix}{cpt}-2 {r2} ".format(
                 prefix = "pe",
                 cpt = cpt,
@@ -142,14 +128,16 @@ def format_spades_paired_end_inputs(wildcards,input):
                 r2 = r2,
             )
             cpt += 1 
-    elif len(input.R1) == 1 and len(input.R2) == 1:
+        return paired_end_reads
+    elif len(input.R1) == 1 and len(input.R2) == 1:        
         paired_end_reads = "-1 {} -2 {}".format(
             input.R1,
             input.R2
-        )        
+        )          
+        return paired_end_reads
     else:
         return ""
-    return paired_end_reads
+    
 
 def format_spades_single_end_inputs(wildcards,input):
     single_end_reads = ""
