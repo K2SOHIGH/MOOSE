@@ -79,6 +79,7 @@ rule assembly:
             os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml"),
             sample = SAMPLES.samples,
         ),
+        stats = os.path.join(RESDIR, SAMPLES_DIR, "assembly.stats.tsv"),
     conda:
         "envs/multiqc.1.13.yaml"     
     params:
@@ -95,9 +96,7 @@ rule assembly_make_anvio_bams_file:
     output:
         temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml")),
     input:
-        get_mapping_products,
-        # get_sro_mapping_products,
-        # get_srf_lrf_mapping_products,            
+        get_mapping_products,         
     run:
         bams_dict = {}
         for fi in input:
@@ -106,14 +105,25 @@ rule assembly_make_anvio_bams_file:
         yaml.dump( { wildcards.sample : bams_dict  } ,  open(str(output) , 'w' ) ),
 
 
+rule assemby_stats:
+    output:
+        os.path.join(RESDIR, SAMPLES_DIR, "assembly.stats.tsv"),
+    input:
+        expand(
+            os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "{qc_contigs}-stats", "assembly.stats.tsv"),
+            sample = SAMPLES.samples,
+            qc_contigs = ["raw","filtered"],
+        )
+    shell:
+        "head -n 1 {input[0]} > {output} && tail -q -n +2 {input} > {output}"
+
+
 
 rule assembly_make_anvio_contigs_file:
     output:
         temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml")),
     input:
-        get_assembly_products,
-        # get_sro_assembly_products,
-        # get_srf_lrf_assembly_products,            
+        get_assembly_products,            
     run:
         assembly_dict = {}
         for fi in input:
@@ -186,7 +196,7 @@ rule assembly_filtering:
                             
 
 include: "./rules/bowtie2.smk"
-include: "./rules/contigs_quality.smk"
+include: "./rules/contigstats.smk"
 include: "./rules/megahit.smk"
 include: "./rules/spades.smk"
 include: "./rules/unicycler.smk"
