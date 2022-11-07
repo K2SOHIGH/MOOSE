@@ -1,29 +1,48 @@
 
 
 
-rule assembly_rename_miniasm:
-    output:
-        os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "miniasm" , "contigs.fa" )
-    input:
-        fa = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "miniasm" , "final.contigs.fa"),
-        flag = os.path.join(RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "miniasm" , "assembly_graphs"),        
-    shell:
-        "mv {input.fa} {output}"
+
 
 rule assembly_polishing_with_minipolish:
+    output:
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","LRF" , "miniasm" , "polished.gfa" )
+    input:
+        reads = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "long"),
+        gfa = os.path.join(RESDIR, SAMPLES_DIR , "{sample}","LRF" , "miniasm" , "raw.gfa" ),
+    params:
+        lrt = lambda wildcards : "" if 
+            SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "nanopore" else
+            "--pacbio"
+    threads:
+        10
     shell:
-        "minipolish -t 8 long_reads.fastq.gz assembly.gfa > polished.gfa"
+        "minipolish {lrt} --rounds 5 -t {threads} {input.reads} {input.gfa} > {output}"
 
 rule assembly_with_miniasm:
-output:
-    "miniasm-graph.gfa"
-shell:
-    "miniasm -f {input.lr} {input.overlap} > {output}"
-
-rule assembly_lr_mapping_minimap2:
     output:
-        overlap.paf.gz
-    params:
-        lrt = "ava-ont" if lrt == "nanopore" else "ava-pb"
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","LRF" , "miniasm" , "raw.gfa" )
+    input:
+        lr = lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "long"),
+        paf = os.path.join(RESDIR, SAMPLES_DIR , "{sample}","LRF" , "miniasm" , "overlap.paf.gz" ),
+    conda:
+        "../envs/miniasm.yaml"
     shell:
-        "minimap2 {input} {input} -x {params.lrt} | gzip > {outpt}" 
+        "miniasm -s 1000 -f {input.lr} {input.paf} > {output}"
+
+
+
+rule assembly_finding_lr_overlap_with_minimap2:
+    output:
+        os.path.join(RESDIR, SAMPLES_DIR , "{sample}","LRF" , "miniasm" , "overlap.paf.gz" )
+    input:
+        lambda wildcards : get_qc_reads(wildcards, wildcards.sample, "long"),
+    params:
+        lrt = lambda wildcards : "ava-ont" if 
+            SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "nanopore" else
+            "ava-pb"
+    conda:
+        "../envs/minimap2.yaml"
+    threads:
+        10
+    shell:
+        "minimap2 -t -x {params.lrt} {threads} {input} {input} - | gzip > {outpt}"

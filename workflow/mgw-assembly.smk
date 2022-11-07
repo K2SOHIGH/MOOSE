@@ -61,16 +61,21 @@ onstart:
 onerror:
     wlogger.error("an error occured during assembly WORKFLOW :(")
 
+def target_all(wildcards):
+    expand(
+
+    )
+
 rule assembly:
     output:                
         os.path.join(RESDIR  ,"assembly_report.html"),  
         os.path.join(RESDIR  ,"assembly.yaml"),         
         os.path.join(RESDIR  ,"bams.yaml"),         
     input:
-        expand(
-            os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
-            sample = SAMPLES.samples,
-        ),
+        # expand(
+        #     os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
+        #     sample = SAMPLES.samples,
+        # ),
         contigs = expand(
             os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml"),
             sample = SAMPLES.samples,
@@ -88,9 +93,8 @@ rule assembly:
         name = "assembly_report.html",
     shell:
         "cat {input.contigs} > {output[1]} ; "
-        "cat {input.bams} > {output[2]} ; "
-        "rm -rf {params.outdir}/assembly_report* ; "        
-        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} "
+        "cat {input.bams} > {output[2]} ; "  
+        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} -f "
 
 rule assembly_make_anvio_bams_file:
     output:
@@ -131,23 +135,31 @@ rule assembly_make_anvio_contigs_file:
             assembly_dict[a_id] = os.path.abspath(fi)
         yaml.dump( { wildcards.sample : assembly_dict  } ,  open(str(output) , 'w' ) ),
 
-rule assembly_sample_report:
-    output:
-        os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
-    input:          
-        expand(
-            os.path.join(RESDIR, SAMPLES_DIR, "{{sample}}" , "{qc_contigs}-contigs-qc", "report.html"),
-            qc_contigs = ["raw","filtered"]
-        ),
-        os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "mapping.done"),
-    conda:
-        "envs/multiqc.1.13.yaml"     
-    params:
-        multiqc_target = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
-        outdir = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
-        name = "assembly_report.html",
-    shell:
-        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name}"
+# rule assembly_sample_report:
+#     output:
+#         os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
+#     input:          
+#         expand(
+#             os.path.join(RESDIR, SAMPLES_DIR, "{{sample}}" , "{qc_contigs}-contigs-qc", "report.html"),
+#             qc_contigs = ["raw","filtered"]
+#         ),
+#         os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "mapping.done"),
+#     conda:
+#         "envs/multiqc.1.13.yaml"     
+#     params:
+#         multiqc_target = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
+#         outdir = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
+#         name = "assembly_report.html",
+#     shell:
+#         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} -f "
+
+# rule assembly_target:
+#     output:
+#         touch(temp(os.path.join(RESDIR, "{sample}" , "assembly.done"))),
+#     input:
+#         expand(
+
+#         )
 
 rule assembly_filtering:
     """

@@ -79,7 +79,7 @@ def read_qc():
     SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-reads-qc.smk'))
 
     cmd = """
-        snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs} --conda-prefix {cprefix} 
+        snakemake --snakefile {snakefile} --use-conda --rerun-triggers mtime --configfile {config} {snakargs} --conda-prefix {cprefix} 
     """.format( 
         snakefile = SNAKEFILE , 
         config    = CONFIGFILE,

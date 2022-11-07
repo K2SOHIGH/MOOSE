@@ -16,12 +16,14 @@ rule assembly_with_unicycler:
         SR = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "single" ), "single"  ),
         LR = lambda wildcards : unicycler_get_reads( wildcards,  get_qc_reads(wildcards, wildcards.sample, "long"), "long"  ),        
     params:
-        unicycler_paired_end_reads = lambda wildcards, input : "-1 {} -2 {}".format(input.R1,input.R2) if wildcards.assembly_type in ["SRO","SRF"] else "",
-        unicycler_single_end_reads = lambda wildcards, input : "-s {}".format(input.SR) if wildcards.assembly_type in ["SRO","SRF"] else "",
+        unicycler_paired_end_reads = lambda wildcards, input : "-1 {} -2 {}".format(input.R1,input.R2) if input.R1 and input.R2 else "",
+        unicycler_single_end_reads = lambda wildcards, input : "-s {}".format(input.SR) if input.SR else "",
         unicycler_long_reads       = lambda wildcards, input : "-l {}".format(input.LR) if input.LR else "",
         outdir  = os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler"),
         unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",        
-        kmers = config["KLIST"],
+        #kmers = config["KLIST"],
+        kmers = "--kmers {}".format(",".join(config["KLIST"])) if config["KLIST"] else "" ,
+
     log:
         os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler" , "mgw_unicycler.log" )
     threads:

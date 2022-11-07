@@ -11,14 +11,15 @@ rule reads_processing_long_reads:
     input:
         lambda wildcards : READS[ "long_" + wildcards.lr ],
     params:
-        lr_min_length = config["lr_min_len"] if "lr_min_len" in config else 7000,
-        target_bases = config["lr_target_bases"] if "lr_target_bases" in config else 10000000,                                                                                       
+        lr_min_length = config["lr_min_len"] if "lr_min_len" in config else 5000,
+        target_bases = config["lr_target_bases"] if "lr_target_bases" in config else 10000000,  # --target_bases {params.target_bases} 
+        keep = 90                                                                                       
     conda:
         "../envs/filtlong.0.2.1.yaml"
     threads:
         10
     shell:
-        "filtlong --length_weight 3 --min_length {params.lr_min_length} --keep_percent 0.9 --target_bases {params.target_bases} {input} | gzip > {output}"
+        "filtlong --length_weight 3 --min_length {params.lr_min_length} --keep_percent {params.keep} {input} | gzip > {output}"
 
  
 rule reads_processing_single_end:

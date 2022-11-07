@@ -44,13 +44,12 @@ def get_args():
 
 def glob_paired_end(samplesdir, forward_prefix , reverse_prefix):
     forwards = sorted(glob.glob("{}/**/*{}*".format(samplesdir,forward_prefix)))
-    reverses = sorted(glob.glob("{}/**/*{}*".format(samplesdir,forward_prefix)))
+    reverses = sorted(glob.glob("{}/**/*{}*".format(samplesdir,reverse_prefix)))
     paired_end = {}
     if len(forwards)==len(reverses):
         for f,r in zip(forwards,reverses):
             f = os.path.abspath(f)
             r = os.path.abspath(r)
-
             sid = os.path.dirname(f).split('/')[-1]
             if sid not in paired_end : 
                 paired_end[sid] = []

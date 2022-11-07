@@ -1,0 +1,8 @@
+name: seqku
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - seqfu
+prefix: /home/mmillet/miniconda3/envs/seqku

@@ -52,7 +52,7 @@ def get_mapping_products(wildcards):
         )
     return BAMS
 
-   
+
 
 def get_qc_reads(wildcards , sample_id , read_type):    
     sample = SAMPLES.get_sample_by_id(sample_id)
