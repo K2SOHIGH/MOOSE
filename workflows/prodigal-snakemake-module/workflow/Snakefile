@@ -8,10 +8,18 @@ import pandas as pd
 import yaml
 import logging
 
-from scripts import snakeutils as u
+from utils import utils
+from utils import log
 
 
-BINS = u.parse_input(config["genome_input"] , config["genome_extension"] )
+wlogger = log.setlogger(__name__)
+
+
+BINS = utils.parse_input(config["genome_input"] , config["genome_extension"] )
+
+if not BINS:
+    wlogger.error("Can't retrieve your bins :( you might check your input or the genome extension.")
+    exit(-1)    
 
 ####################################################################################################
 '''

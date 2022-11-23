@@ -91,10 +91,8 @@ def input_is_fasta(input):
 def parse_input(input , extension):
     if input:
         if os.path.isdir(input):
-            print(input)
             return input_from_dir(input, extension)
         elif os.path.isfile(input):
-            print(input)
             if input.endswith(".yaml"):
                 return input_from_yaml(input)
             return input_is_fasta(input)

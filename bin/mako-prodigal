@@ -69,41 +69,17 @@ def get_args():
 
 def main():
     args = get_args()
-    logger.info("Running prodigal-snakemake-module !")
-    
-    BINS = utils.parse_input(args.genome_input , args.genome_extension )
-    if BINS:
-        utils.module(
-            "prodigal-snakemake-module",
-            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
-            args
-        )
-        exit()
-        os.makedirs(args.res_dir , exist_ok= True)
-        for gid,gpath in BINS.items():            
-            logger.info("%s : %s" % (gid,gpath))
-        logger.info("Number of genomes : %i" % len(BINS))
-        
-        CONFIG = utils.args2dict(args)
-        
-        yaml.dump(CONFIG, open( args.res_dir + "/config.yaml" , 'w'))
+    utils.module(
+        "prodigal-snakemake-module",
+        os.path.join( 
+            os.path.abspath(
+                os.path.dirname(__file__)
+            ), 
+            "../condaenvs"
+        ),
+        args
+    )
 
-        excode = utils.run_snakemake(            
-            os.path.join(os.path.dirname(__file__),".."),
-            "prodigal",
-            args.res_dir + "/config.yaml",
-            args.threads,
-            cprefix,
-            args.snakargs       
-        )
-
-        if excode != 0:
-            logger.error("Snakemake fail with exit code %i " % excode)
-            exit(-1)
-        logger.info("Oh my precious CDS !")
-    else:
-        logger.error("Can't retrieve your bins ... check the genome extension =°")
-        exit(-1)
 
 
 if __name__ == "__main__":

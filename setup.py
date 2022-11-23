@@ -13,7 +13,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     
 
 setup(
-    name='mgw',
+    name='mako',
     version='0.1',
     description="""
         metagenomic workflow performing reads QC , reads assemblies and assemblies QC    
