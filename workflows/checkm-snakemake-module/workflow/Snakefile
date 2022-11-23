@@ -224,7 +224,7 @@ rule checkM_lineage_wf:
     benchmark:
         config["res_dir"] + "/benchmarks/lineagewf/{batch}.txt"    
     shell:
-        "echo {params.checkm_data}; "
+        "echo {params.checkm_data}; export LC_ALL=C : "
         "checkm data setRoot {params.checkm_data} &>> {log}; "
         "checkm lineage_wf "
         "--tab_table "          # output as a tab-separated file
