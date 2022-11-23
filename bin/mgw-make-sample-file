@@ -7,16 +7,11 @@ import logging
 import glob
 import multiprocessing
 import yaml
-from workflow.utils import utils
-from workflow.utils import log
+from utils import utils
+from utils import log
 
 logger = log.setlogger(__file__)
     
-logger.setLevel(logging.INFO)
-logger.addHandler(
-    log.stream_handler(logging.INFO)
-)
-
 def get_args():
     parser = argparse.ArgumentParser(
         prog='mgw-assemble',

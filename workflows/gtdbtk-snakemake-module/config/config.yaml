@@ -1,0 +1,19 @@
+genome_input : "genomes.yaml"
+genome_extension: "fna.gz"
+
+res_dir : "results"
+log: null
+
+merge_with: null
+
+GTDB : /mnt/beegfs/mmillet/data/GTDB_releases/release95
+
+batch_size : 1000
+
+GTDB_isani: False
+GTDB_mash:
+  k : 16
+  s : 5000
+  d : 0.1 
+  v : 1.0
+GTDB_fa_min_af : 0.65

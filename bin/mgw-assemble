@@ -2,153 +2,127 @@
 # -*- coding: utf-8 -*-
 import os
 import argparse
-import logging
+import shutil
 import multiprocessing
 import yaml
-from workflow.utils import utils
-from workflow.utils import log
 
-logger = log.setlogger("ASSEMBLE")
+from utils import log
+from utils import utils
+
+logger = log.setlogger("mgw-assembly-module")
     
-logger.setLevel(logging.INFO)
-logger.addHandler(
-    log.stream_handler(logging.INFO)
-)
-
 def get_args():
     parser = argparse.ArgumentParser(
         prog='mgw-assemble',
-        description='Assemble reads into assembly')
+        description='Assemble reads into assembly'
+    )
 
-    parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")
+    parser.add_argument('-i', "--input" , dest="INPUT" , required=True, default=None ,  type=str , help = "INPUT YAML file, see README.md for format.")
 
-    parser.add_argument('-o', '--output-dir'  , default = "." , type=str)
+    parser.add_argument('-o', '--output-dir' , dest="RESDIR" , default = "." , type=str)
 
     parser.add_argument('--rerun' , action='store_true')
 
-    parser.add_argument('-c', "--coassembly" , default=None ,  type=str , help = "config YAML file detailing co-assembly groups, see README.md for format.")
+    parser.add_argument('-c', "--coassembly" , dest="COASSEMBLY" , default=None ,  type=str , help = "config YAML file detailing co-assembly groups, see README.md for format.")
 
-    parser.add_argument('--mappers', default=None ,  type=str , help = "config YAML file detailing which samples to map against others, see README.md for format.")
+    parser.add_argument('--mappers' , dest="MAPPERS" , default=None ,  type=str , help = "config YAML file detailing which samples to map against others, see README.md for format.")
 
-    parser.add_argument('-a' , '--assemblers', default = ["all"] , nargs='*',
-        choices=["megahit" , "unicycler", "spades" , "all" ], 
+    parser.add_argument('-a' , '--assemblers', dest='ASSEMBLERS',  default = ["all"] , nargs='*',
+        choices=["megahit" , "unicycler", "spades" , "miniasm" , "all" ], 
         help="assembler to use, by default spades, unicycler and megahit will be ran" )
 
-    parser.add_argument('-w' , '--workflows', default = ["auto"] , nargs='*',
+    parser.add_argument('-w' , '--workflows' , dest='WORKFLOWS', default = ["auto"] , nargs='*',
         choices=[ "SRO" , "SRF", "LRF" , "auto" ],
-        help="assembly type you want to achieve. if auto is set , then assembly types will be infere from each sample based on their input files. If short and long reads are specified, then short_reads, long_reads and hybrid assembly will be ran" )
+        help="assembly type you want to achieve. if auto is set , then assembly types will be infere from each sample based on their INPUT files. If short and long reads are specified, then short_reads, long_reads and hybrid assembly will be ran" )
 
-    parser.add_argument('-k' , '--kmers', default = ["77"] , nargs='*' , 
+    parser.add_argument('-k' , '--kmers' , dest="KLIST", default = ["77"] , nargs='*' , 
         help="list of kmer length to use.")
 
-    parser.add_argument('-m','--mode' , default = None, 
+    parser.add_argument('-m','--mode' , dest='MODE' , default = None, 
         choices = ['isolate', 'sc', 'meta', 'bio', 'corona', 'rna', 'plasmid', 'metaviral', 'metaplasmid', 'rnaviral', 'iontorrent'],
         help = "Assembly mode used with spades [and spades through unicycler]"
     )
 
-    parser.add_argument('-mc' , default = None, type = str , help="quoted string of megahit commandline extra parameters")
+    parser.add_argument('-mc' , dest="MEGAHIT" , default = None, type = str , help="quoted string of megahit commandline extra parameters")
 
-    parser.add_argument('-uc' , default = None, type = str , help="quoted string of unicycler commandline extra parameters")
+    parser.add_argument('-uc' , dest="UNICYCLER" , default = None, type = str , help="quoted string of unicycler commandline extra parameters")
 
-    parser.add_argument('-sc' , default = None, type = str , help="quoted string of spades commandline extra parameters")
+    parser.add_argument('-sc', dest="SPADES" , default = None, type = str , help="quoted string of spades commandline extra parameters")
 
     parser.add_argument('--min-quality' , default = 20, type = int , help="min quality read")
 
     parser.add_argument('--min-identity' , default = 95, type = int , help="min identity read")
 
-    parser.add_argument('--min-length' , default = 100, type = int , help="min length read")
+    parser.add_argument('--min-len' , default = 100, type = int , help="min length read")
 
     parser.add_argument('--not-properly-paired',dest="properly_paired", default=True , action="store_false" , help="should read be properly paired ?")
 
-    parser.add_argument('--logfile' , default = None, type = str , help="logfile")
+    #parser.add_argument('--logfile' , default = None, type = str , help="logfile")
 
-    parser.add_argument('--snakargs', type=str,
-        default = "-j{} --use-conda --rerun-triggers mtime -q  --nolock".format(multiprocessing.cpu_count()-1) , help = "snakemake configuration" )
+    parser.add_argument(        
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
 
-    parser.add_argument('--conda-prefix', type=str,
-        default = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../conda_env") , 
-        help = "directory where conda environment will be stored" )
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="-q",
+            help='snakmake arguments')
     args = parser.parse_args()
     return args
 
-def assemble():
+def main():
     args = get_args()
-    """
-        Run assembly
-    """
-    RESDIR = os.path.abspath(args.output_dir)
-    if args.logfile:
-        logger.addHandler(
-            log.file_handler(args.logfile,logging.info)
-        )
-        
-    logger.info("Snakemake will install conda environment in %s" % args.conda_prefix)
+    logger.info("Running assemble-snakemake-module !")
     
-    CONFIGFILE = os.path.join( RESDIR ,"config", "assemble-config.yaml" )
-    READSFILE = os.path.join( RESDIR , "config", "assemble-reads.yaml" )
-
-    try:
-        os.makedirs( RESDIR , exist_ok = args.rerun )
-        os.makedirs( os.path.join(RESDIR,"config") , exist_ok = args.rerun )
-        logger.info("Results will be store in {}".format(RESDIR))
-    except FileExistsError:
-        logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(RESDIR))
-        exit(-1)    
-        
-    logger.info("ConfigFile : {}".format( CONFIGFILE ))
-    logger.info("ReadsFile : {}".format( READSFILE ))
-
-
-    # Parsing input files : 
-    INPUTS = yaml.load( open(args.input) , Loader = yaml.SafeLoader )
-    
-    yaml.dump(INPUTS,open(READSFILE, 'w'))
-
-    configuration = {
-        "RESDIR" : RESDIR,
-        "INPUT" :  READSFILE,
-        "ASSEMBLERS" : list(args.assemblers),
-        "WORKFLOWS" : list(args.workflows) if "auto" not in args.workflows else ["SRO","LRF","SRF"],
-        "COASSEMBLY": args.coassembly,
-        "MAPPERS": args.mappers,
-        "KLIST": list(args.kmers),
-        "MODE":args.mode,
-        "MEGAHIT":args.mc,
-        "UNICYCLER":args.uc,
-        "SPADES":args.sc,
-        "min_quality":args.min_quality,
-        "min_identity":args.min_identity,
-        "min_len":args.min_length,
-        "properly_paired":args.properly_paired,
-        "SNAKARGS": args.snakargs,
-    }
-
-    yaml.dump( configuration, open( CONFIGFILE ,"w" ) )
-    
-    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-assembly.smk'))
-
-    cmd = """
-        snakemake --snakefile {snakefile} --use-conda --rerun-triggers mtime --configfile {config} {snakargs} --conda-prefix {cprefix} 
-    """.format( 
-        snakefile = SNAKEFILE , 
-        config    = CONFIGFILE,
-        snakargs  = args.snakargs,
-        cprefix = args.conda_prefix,
+    cprefix = os.path.abspath(
+        os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
     )
+
+    args.WORKFLOWS = list(args.WORKFLOWS) if "auto" not in args.WORKFLOWS else ["SRO","LRF","SRF"]
+    args.ASSEMBLERS = list(args.ASSEMBLERS) if "all" not in args.ASSEMBLERS else ["megahit","spades","unicycler"]
+
+    # if args.logfile:
+    #     logger.addHandler(
+    #         log.file_handler(args.logfile,logging.info)
+    #     )
+            
+    args.RESDIR = os.path.abspath(args.RESDIR)
     
-    logger.info("running : \n{}\n".format( cmd ) )    
-    
-    o = os.system(cmd)
-    
-    if o == 0:
+    # Parsing INPUT files : 
+    READS = yaml.load( open(args.INPUT) , Loader = yaml.SafeLoader )
+
+    if READS:
+        try:
+            os.makedirs( args.RESDIR , exist_ok = args.rerun )            
+            logger.info("Results will be store in {}".format(args.RESDIR))
+        except FileExistsError:
+            logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(RESDIR))
+            exit(-1)    
+ 
+        CONFIG = utils.args2dict(args)       
+        yaml.dump(CONFIG,open(args.RESDIR + "/config.yaml", 'w'))
+        
+        excode = utils.run_snakemake(            
+            os.path.join(os.path.dirname(__file__),".."),
+            "assemble",
+            args.RESDIR + "/config.yaml",
+            args.threads,
+            cprefix,
+            args.snakargs       
+        )
+
+        if excode != 0:
+            logger.error("Hum ... something went wrong while executing the workflow ... :( ")
+            exit(-1)
         logger.info("assembly workflow terminate with exit code 0 ! Congrats ! ")
     else:
-        logger.error("Hum ... something went wrong while executing the workflow ... :( ")
-
-
+        logger.error("Can't retrieve your reads ... :(")
+        exit(-1)
+    if "-n" in args.snakargs or "--dryrun" in args.snakargs:        
+        shutil.rmtree(args.RESDIR)
 
 if __name__ == "__main__":
-    logger.info("Assembly workflow")
-    assemble()
+    main()
 
 

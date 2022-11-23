@@ -2,107 +2,89 @@
 # -*- coding: utf-8 -*-
 import os
 import argparse
-import logging
+import shutil
 import multiprocessing
 import yaml
-from workflow.utils import utils
-from workflow.utils import log
+from utils import utils
+from utils import log
 
-logger = log.setlogger("ASSEMBLE")
-    
-logger.setLevel(logging.INFO)
-logger.addHandler(
-    log.stream_handler(logging.INFO)
-)
+logger = log.setlogger("mgw-anvio-magic-module")
 
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-assemble',
-        description='Assemble reads into assembly')
+        prog='mgw-anvio-magic',
+        description='use anvi\'o magic on your assemblies')
 
-    parser.add_argument('-i', "--input-contigs" , required=True, default=None ,  type=str , help = "CONTIGS input YAML file, see README.md for format.")
+    parser.add_argument('-i', "--input-contigs" , dest="CONTIGS" , required=True, default=None ,  type=str , help = "CONTIGS input YAML file, see README.md for format.")
     
-    parser.add_argument('-b', "--bams" , required=True, default=None ,  type=str , help = "BAMs input YAML file, see README.md for format.")
+    parser.add_argument('-b', "--bams" , dest="BAMS" , required=True, default=None ,  type=str , help = "BAMs input YAML file, see README.md for format.")
 
-    parser.add_argument('-o', '--output-dir'  , default = "." , type=str)
+    parser.add_argument('-o', '--output-dir' , dest="RESDIR" , default = "." , type=str)
 
-    parser.add_argument('-d', '--dbs'  , default = None , type=str , help="where anvi'o databases should be stored [~20Gb]")
+    parser.add_argument('-d', '--dbs' , dest="DBDIR"  , default = None , type=str , help="where anvi'o databases should be stored [~20Gb]")
 
-    parser.add_argument('--rerun' , action='store_true')
+    parser.add_argument('--rerun'  , action='store_true')
 
-    parser.add_argument('--meta' , action='store_true')
+    parser.add_argument('--meta' , dest="META", action='store_true')
         
-    parser.add_argument('--logfile' , default = None, type = str , help="logfile")
+    parser.add_argument(        
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
 
-    parser.add_argument('--snakargs', type=str,
-        default = "-j{} --use-conda --rerun-triggers mtime -q  --nolock".format(multiprocessing.cpu_count()-1) , help = "snakemake configuration" )
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
+            help='snakmake arguments')
 
-    parser.add_argument('--conda-prefix', type=str,
-        default = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../conda_env") , 
-        help = "directory where conda environment will be stored" )
     args = parser.parse_args()
     return args
 
-def assemble():
+def main():
     args = get_args()
-    """
-        Run assembly
-    """
-    RESDIR = os.path.abspath(args.output_dir)
-    if args.logfile:
-        logger.addHandler(
-            log.file_handler(args.logfile,logging.info)
+    logger.info("Running anvio-magic-snakemake-module !")
+
+    cprefix = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
+        
+    logger.info("Snakemake will install conda environment in %s" % cprefix)
+    args.RESDIR = os.path.abspath(args.RESDIR)
+    
+    CONTIGS = yaml.load( open(args.CONTIGS) , Loader = yaml.SafeLoader )
+    if CONTIGS:
+        try:
+            os.makedirs( args.RESDIR , exist_ok = args.rerun )
+            logger.info("Results will be store in {}".format(args.RESDIR))
+        except FileExistsError:
+            logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(args.RESDIR))
+            exit(-1)   
+  
+        CONFIG = utils.args2dict(args)
+    
+        yaml.dump( CONFIG, open( args.RESDIR + "/config.yaml" ,"w" ) )
+    
+        excode = utils.run_snakemake(            
+            os.path.join(os.path.dirname(__file__),".."),
+            "anvio-magic",
+            args.RESDIR + "/config.yaml",
+            args.threads,
+            cprefix,
+            args.snakargs       
         )
-        
-    logger.info("Snakemake will install conda environment in %s" % args.conda_prefix)
-    
-    CONFIGFILE = os.path.join( RESDIR ,"config", "anvio-config.yaml" )
 
-    try:
-        os.makedirs( RESDIR , exist_ok = args.rerun )
-        os.makedirs( os.path.join(RESDIR,"config") , exist_ok = args.rerun )
-        logger.info("Results will be store in {}".format(RESDIR))
-    except FileExistsError:
-        logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(RESDIR))
-        exit(-1)    
-        
-    logger.info("ConfigFile : {}".format( CONFIGFILE ))
-    
-    configuration = {
-        "RESDIR" : RESDIR,
-        "CONTIGS" :  args.input_contigs,
-        "BAMS": args.bams,
-        "DBDIR": args.dbs,
-        "META":args.meta,        
-        "SNAKARGS": args.snakargs,
-    }
-
-    yaml.dump( configuration, open( CONFIGFILE ,"w" ) )
-    
-    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-anvio-magic.smk'))
-
-    cmd = """
-        snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs} --conda-prefix {cprefix} 
-    """.format( 
-        snakefile = SNAKEFILE , 
-        config    = CONFIGFILE,
-        snakargs  = args.snakargs,
-        cprefix = args.conda_prefix,
-    )
-    
-    logger.info("running : \n{}\n".format( cmd ) )    
-    
-    o = os.system(cmd)
-    
-    if o == 0:
-        logger.info("anvio-magic workflow terminate with exit code 0 ! Congrats ! ")
+        if excode != 0:
+            logger.error("Hum ... something went wrong while executing the workflow ... :( ")
+            exit(-1)
+        logger.info("anvi'o magic was impressive, Nice ! ")
     else:
-        logger.error("Hum ... something went wrong while executing the workflow ... :( ")
+        logger.error("Can't retrieve your contigs ... :(")
+        exit(-1)
+    
+    if "-n" in args.snakargs or "--dryrun" in args.snakargs:
+        logger.info("removing %s as it was a dryrun." % args.RESDIR)
+        shutil.rmtree(args.RESDIR)
 
 
-
-if __name__ == "__main__":
-    logger.info("Assembly workflow")
-    assemble()
+if __name__ == "__main__":    
+    main()
 
 

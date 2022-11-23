@@ -2,23 +2,19 @@
 # -*- coding: utf-8 -*-
 import os
 import argparse
-import logging
+import shutil
 import multiprocessing
 import yaml
-from workflow.utils import utils
-from workflow.utils import log
+from utils import utils
+from utils import log
 
-logger = log.setlogger("QC")
+logger = log.setlogger("mgw-reads-qc-module")
     
-logger.setLevel(logging.INFO)
-logger.addHandler(
-    log.stream_handler(logging.INFO)
-)
 
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-assemble',
-        description='Assemble reads into assembly')
+        prog='mgw-reads-qc',
+        description='long reads and short reads quality check')
 
     parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")
 
@@ -26,79 +22,70 @@ def get_args():
 
     parser.add_argument('--rerun' , action='store_true')
 
-    parser.add_argument('--logfile' , default = None, type = str , help="logfile")
+    #parser.add_argument('--logfile' , default = None, type = str , help="logfile")
 
-    parser.add_argument('--snakargs', type=str,
-        default = "-j{} --use-conda --rerun-triggers mtime -q  --nolock".format(multiprocessing.cpu_count()-1) , help = "snakemake configuration" )
+    parser.add_argument(        
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
 
-    parser.add_argument('--conda-prefix', type=str,
-        default = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../conda_env") , 
-        help = "directory where conda environment will be stored" )
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
+            help='snakmake arguments')
+
+    # parser.add_argument('--conda-prefix', type=str,
+    #     default = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../conda_env") , 
+    #     help = "directory where conda environment will be stored" )
+    
     args = parser.parse_args()
     return args
 
-def read_qc():
+
+def main():
     args = get_args()
-    """
-        Run assembly
-    """
-    RESDIR = os.path.abspath(args.output_dir)
-    if args.logfile:
-        logger.addHandler(
-            log.file_handler(args.logfile,logging.info)
-        )
-        
-    logger.info("Snakemake will install conda environment in %s" % args.conda_prefix)
+    logger.info("Running reads-qc-snakemake-module !")
+
+    cprefix = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
+
+    logger.info("Snakemake will install conda environment in %s" % cprefix)
+    args.output_dir = os.path.abspath(args.output_dir)
     
-    CONFIGFILE = os.path.join( RESDIR ,"config", "readsqc-config.yaml" )
-    READSFILE = os.path.join( RESDIR , "config", "readsqc-reads.yaml" )
-
-    try:
-        os.makedirs( RESDIR , exist_ok = args.rerun )
-        os.makedirs( os.path.join(RESDIR,"config") , exist_ok = args.rerun )
-        logger.info("Results will be store in {}".format(RESDIR))
-    except FileExistsError:
-        logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(RESDIR))
-        exit(-1)    
-        
-    logger.info("ConfigFile : {}".format( CONFIGFILE ))
-    logger.info("ReadsFile : {}".format( READSFILE ))
-
     # Parsing input files : 
-    INPUTS = yaml.load( open(args.input) , Loader = yaml.SafeLoader )
+    READS = yaml.load( open(args.input) , Loader = yaml.SafeLoader )
+    if READS:
+    # yaml.dump(INPUTS,open(READSFILE, 'w'))
+        try:
+            os.makedirs( args.output_dir , exist_ok = args.rerun )
+            logger.info("Results will be store in {}".format(args.output_dir))
+        except FileExistsError:
+            logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(args.output_dir))
+            exit(-1)    
+        
+        CONFIG = utils.args2dict(args)
+        yaml.dump(CONFIG, open( args.output_dir + "/config.yaml" , 'w'))
     
-    yaml.dump(INPUTS,open(READSFILE, 'w'))
+        excode = utils.run_snakemake(            
+            os.path.join(os.path.dirname(__file__),".."),
+            "reads-qc",
+            args.output_dir + "/config.yaml",
+            args.threads,
+            cprefix,
+            args.snakargs       
+        )
 
-    configuration = {
-        "RESDIR" : RESDIR,
-        "INPUT" :  READSFILE,
-    }
-
-    yaml.dump( configuration, open( CONFIGFILE ,"w" ) )
-    
-    SNAKEFILE =  os.path.abspath(os.path.join(os.path.dirname(__file__), '../workflow/mgw-reads-qc.smk'))
-
-    cmd = """
-        snakemake --snakefile {snakefile} --use-conda --rerun-triggers mtime --configfile {config} {snakargs} --conda-prefix {cprefix} 
-    """.format( 
-        snakefile = SNAKEFILE , 
-        config    = CONFIGFILE,
-        snakargs  = args.snakargs,
-        cprefix = args.conda_prefix,
-    )
-    
-    logger.info("running : \n{}\n".format( cmd ) )    
-    
-    o = os.system(cmd)
-    
-    if o == 0:
+        if excode != 0:
+            logger.error("Hum ... something went wrong while executing the workflow ... :( ")
+            exit(-1)
         logger.info("reads-qc workflow terminate with exit code 0 ! Congrats ! ")
     else:
-        logger.error("Hum ... something went wrong while executing the workflow ... :( ")
+        logger.error("Can't retrieve your reads ... :(")
+        exit(-1)
+    if "-n" in args.snakargs or "--dryrun" in args.snakargs:
+        shutil.rmtree(args.output_dir)
 
 if __name__ == "__main__":
-    logger.info("reads-qc workflow")
-    read_qc()
+    main()
 
 
 

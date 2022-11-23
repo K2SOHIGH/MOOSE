@@ -1,0 +1,166 @@
+import argparse
+import sys
+import os
+import yaml
+
+import multiprocessing
+
+
+from utils import utils
+from utils import log
+
+
+logger = log.setlogger("checkm-snakemake-module")
+
+
+def get_args():
+    parser = argparse.ArgumentParser(
+            prog='checkm-wf',
+            description='process genomes by batches through checkm lineage or taxonomic workflow'
+        )
+
+    parser.add_argument(
+        '-i',
+        '--input',
+        dest="genome_input",
+        type=str,
+        required=True,
+        help="yaml file containing path to translated cds files , a fasta file or a directory containing fasta files"
+        )
+    
+    parser.add_argument(
+        '-o',
+        '--output-directory',
+        dest= "res_dir",
+        default="resCheckm",
+        type=str,
+        help="output directory"
+    )
+
+    parser.add_argument(
+        '--tmp',
+        dest= "TMP",
+        default=None,
+        type=str,
+        help="temporary directory"
+    )
+
+    parser.add_argument(
+        '-d',
+        '--checkm-datas',
+        type=str,
+        dest = "CheckM_data",
+        # required=True,
+        help="path to checkm datas"
+    )
+
+    parser.add_argument(
+        '-z',
+        '--batch-size',
+        dest = "batch_size",
+        default=1000,
+        type=int,
+        help="number of genomes to process at once"
+    )
+
+    parser.add_argument(
+        '-e',
+        '--extension',
+        dest = "genome_extension",
+        type=str,
+        default=".fna.gz",
+        help="genome file extension"
+    )
+
+    parser.add_argument(
+        '-m',
+        '--memory',
+        dest = "low_memory",        
+        action='store_true',
+        help="low memory mode"
+    )
+
+    parser.add_argument(
+        '-t',
+        '--taxonomy',
+        dest = "taxonomy_wf",
+        type=str,
+        default = None,
+        help="taxonomy mode enable, take a string 'rank;taxon' are required"
+    )
+
+    parser.add_argument(        
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
+
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
+            help='snakmake arguments')
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = get_args()        
+    # BINS = utils.parse_input(args.genome_input , args.genome_extension )
+    # if BINS:
+    utils.module(
+            "checkm-snakemake-module",
+            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
+            args
+        )
+    exit()
+    args = get_args()
+    logger.info("Running checkm-snakemake-module !")
+
+    cprefix = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
+
+    if args.CheckM_data is None or not os.path.isdir(args.CheckM_data):
+        logger.error("Checkm datas are missing ! See u !")
+        exit(-1)
+
+    if args.taxonomy_wf:
+        rank,taxon = args.taxonomy_wf.split(";")
+        args.taxonomy_wf = {"enable":True,"rank":rank,"taxon":taxon}
+    else:
+        args.taxonomy_wf = {"enable":False,"rank":None,"taxon":None}
+
+    BINS = utils.parse_input(args.genome_input , args.genome_extension )
+
+    if BINS:
+        os.makedirs(args.res_dir , exist_ok= True)
+        for gid,gpath in BINS.items():            
+            logger.info("%s : %s" % (gid,gpath))
+        logger.info("Number of genomes : %i" % len(BINS))
+        
+        CONFIG = utils.args2dict(args)
+        
+        yaml.dump(CONFIG, open( args.res_dir + "/config.yaml" , 'w'))
+
+        excode = utils.run_snakemake(            
+            os.path.join(os.path.dirname(__file__),".."),
+            "checkm",
+            args.res_dir + "/config.yaml",
+            args.threads,
+            cprefix,
+            args.snakargs       
+        )
+
+        if excode != 0:
+            logger.error("Snakemake fail with exit code %i " % excode)
+            exit(-1)
+        logger.info("CheckM done ! Awesome !")
+    else:
+        logger.error("Can't retrieve your bins ... check the genome extension =°")
+        exit(-1)
+
+
+
+
+
+
+if __name__ == "__main__":
+    sys.exit(main())    
