@@ -104,47 +104,14 @@ def get_args():
 
 
 def main():
-    args = get_args()
-    logger.info("Running gtdb-snakemake-module !")
-
-    cprefix = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
-
-    if args.GTDB is None or not os.path.isdir(args.GTDB):
-        logger.error("GTDB is missing ! See --gtdb-datas option or mgw-download-dbs command !")
-        exit(-1)
-
-    if args.GTDB_mash:
-        args.GTDB_mash = {i.split("=")[0]:i.split("=")[1]  for i in args.GTDB_mash.split(",")}
-     
-    BINS = utils.parse_input(args.genome_input , args.genome_extension )
-
-    if BINS:
-        os.makedirs(args.res_dir , exist_ok= True)
-        for gid,gpath in BINS.items():            
-            logger.info("%s : %s" % (gid,gpath))
-        logger.info("Number of genomes : %i" % len(BINS))
-        
-        CONFIG = utils.args2dict(args)
-        
-        yaml.dump(CONFIG, open( args.res_dir + "/config.yaml" , 'w'))
-
-        excode = utils.run_snakemake(            
-            os.path.join(os.path.dirname(__file__),".."),
-            "gtdbtk",
-            args.res_dir + "/config.yaml",
-            args.threads,
-            cprefix,
-            args.snakargs       
+    args = get_args()                
+    utils.module(
+            "gtdbtk-snakemake-module",
+            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
+            args
         )
-
-        if excode != 0:
-            logger.error("Snakemake fail with exit code %i " % excode)
-            exit(-1)
-        logger.info("Genome(s) Classified ! Awesome !")
-    else:
-        logger.error("Can't retrieve your bins ... check the genome extension =°")
-        exit(-1)
-
 
 if __name__ == "__main__":
     sys.exit(main())
+
+    

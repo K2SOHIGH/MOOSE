@@ -1,26 +1,22 @@
-include: "../../share/fun.smk"
+#include: "../../share/fun.smk"
 
-"""
-    LOGGER
-"""
-snakemake_logger = logging.getLogger()
+from utils import log
+from utils import utils
+from utils import sample
+
 
 wlogger = log.setlogger(__name__)
-    
-wlogger.setLevel(logging.INFO)
-wlogger.addHandler(
-    log.stream_handler(logging.INFO)
-)
 
+print(config)
 """
     CONFIGS and GLOBALS
 """
-RESDIR = config["RESDIR"]
+RESDIR = config["output_dir"]
 SAMPLES_DIR = "SAMPLES"
 
 
-SAMPLES = sample.Samples(config["INPUT"])
-SAMPLES_W_LR = get_sample_with_long_reads()
+SAMPLES = sample.Samples(config["input"])
+#SAMPLES_W_LR = get_sample_with_long_reads()
 
 """
     SETUP
@@ -29,6 +25,11 @@ wlogger.info("Grabing configuration and input files =°")
 
 READS = SAMPLES.sample2reads() 
 
+if not READS:
+    wlogger.error("Can't retrieve your reads :(")
+    exit(-1) 
+
+# snakemake start :
 rule reads_qc:
     output:
         os.path.join(RESDIR  ,"reads_qc_report.html"),

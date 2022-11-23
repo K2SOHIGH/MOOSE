@@ -1,4 +1,9 @@
 include: "../../share/fun.smk"
+
+from utils import sample
+from utils import utils
+from utils import assembly
+
 wlogger = log.setlogger(__name__)
     
 """
@@ -25,15 +30,25 @@ SAMPLES = sample.Samples(config["INPUT"])
 #SAMPLES_W_LR = get_sample_with_long_reads()
 
 wlogger.info("Grabing configuration and input files =°")
-ASSEMBLERS = config["ASSEMBLERS"]
+
+wlogger.info("workflows choosen by user  : \n\t- {}".format("\n\t- ".join(config["WORKFLOWS"])))
+wlogger.info("Assemblers choosen by user : \n\t- {}".format("\n\t- ".join(config["ASSEMBLERS"])) )
+
+WORKFLOWS = assembly.setup_workflows(config["WORKFLOWS"],config["ASSEMBLERS"])
 
 
-WORKFLOWS = setup_workflows()
-
-wlogger.info("workflows choosen by user  : \n\t- {}".format("\n\t- ".join(WORKFLOWS)))
-wlogger.info("Assemblers choosen by user : \n\t- {}".format("\n\t- ".join(ASSEMBLERS)) )
+wlogger.info("Validating SAMPLE files and configuration ...")  
+if assembly.validate_samples(SAMPLES,WORKFLOWS):
+    wlogger.info("Number of sample(s) : {}".format(len(SAMPLES.samples)))
+    wlogger.info("input files seems ok regarding workflows and assemblers")  
+else:
+    wlogger.error("one or more sample do not have the necessary file(s) \
+        to be assemble through {} strategy and/or by {} assembler".format(
+            ", ".join(config["WORKFLOWS"]), 
+            ", ".join(config["ASSEMBLERS"])
+        ))
+    exit(-1)
     
-validate_samples()
 
 SAMPLES.samples.update( 
     extend_with_coassembly() 
@@ -42,7 +57,9 @@ SAMPLES.samples.update(
 MAPPERS = parse_mappers()
 
 READS = SAMPLES.sample2reads()    
-wlogger.info("we can start assembling ! ")
+if not READS:
+    wlogger.error("Can't retrieve your reads :(")
+    exit(-1)    
 
 onstart:
     wlogger.info("Starting assembly WORKFLOW")

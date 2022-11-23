@@ -27,12 +27,12 @@ def get_args():
 
     parser.add_argument('--mappers' , dest="MAPPERS" , default=None ,  type=str , help = "config YAML file detailing which samples to map against others, see README.md for format.")
 
-    parser.add_argument('-a' , '--assemblers', dest='ASSEMBLERS',  default = ["all"] , nargs='*',
-        choices=["megahit" , "unicycler", "spades" , "miniasm" , "all" ], 
+    parser.add_argument('-a' , '--assemblers', dest='ASSEMBLERS',  default = ["megahit" , "unicycler", "spades" , "miniasm"],  nargs='*',
+        choices=["megahit" , "unicycler", "spades" , "miniasm"], 
         help="assembler to use, by default spades, unicycler and megahit will be ran" )
 
-    parser.add_argument('-w' , '--workflows' , dest='WORKFLOWS', default = ["auto"] , nargs='*',
-        choices=[ "SRO" , "SRF", "LRF" , "auto" ],
+    parser.add_argument('-w' , '--workflows' , dest='WORKFLOWS', default = [ "SRO" , "SRF", "LRF" ], nargs='*',
+        choices=[ "SRO" , "SRF", "LRF" ],
         help="assembly type you want to achieve. if auto is set , then assembly types will be infere from each sample based on their INPUT files. If short and long reads are specified, then short_reads, long_reads and hybrid assembly will be ran" )
 
     parser.add_argument('-k' , '--kmers' , dest="KLIST", default = ["77"] , nargs='*' , 
@@ -73,54 +73,17 @@ def get_args():
 
 def main():
     args = get_args()
-    logger.info("Running assemble-snakemake-module !")
-    
-    cprefix = os.path.abspath(
-        os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
+    utils.module(
+        "assemble-snakemake-module",
+        os.path.join( 
+            os.path.abspath(
+                os.path.dirname(__file__)
+            ), 
+            "../condaenvs"
+        ),
+        args
     )
-
-    args.WORKFLOWS = list(args.WORKFLOWS) if "auto" not in args.WORKFLOWS else ["SRO","LRF","SRF"]
-    args.ASSEMBLERS = list(args.ASSEMBLERS) if "all" not in args.ASSEMBLERS else ["megahit","spades","unicycler"]
-
-    # if args.logfile:
-    #     logger.addHandler(
-    #         log.file_handler(args.logfile,logging.info)
-    #     )
-            
-    args.RESDIR = os.path.abspath(args.RESDIR)
     
-    # Parsing INPUT files : 
-    READS = yaml.load( open(args.INPUT) , Loader = yaml.SafeLoader )
-
-    if READS:
-        try:
-            os.makedirs( args.RESDIR , exist_ok = args.rerun )            
-            logger.info("Results will be store in {}".format(args.RESDIR))
-        except FileExistsError:
-            logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(RESDIR))
-            exit(-1)    
- 
-        CONFIG = utils.args2dict(args)       
-        yaml.dump(CONFIG,open(args.RESDIR + "/config.yaml", 'w'))
-        
-        excode = utils.run_snakemake(            
-            os.path.join(os.path.dirname(__file__),".."),
-            "assemble",
-            args.RESDIR + "/config.yaml",
-            args.threads,
-            cprefix,
-            args.snakargs       
-        )
-
-        if excode != 0:
-            logger.error("Hum ... something went wrong while executing the workflow ... :( ")
-            exit(-1)
-        logger.info("assembly workflow terminate with exit code 0 ! Congrats ! ")
-    else:
-        logger.error("Can't retrieve your reads ... :(")
-        exit(-1)
-    if "-n" in args.snakargs or "--dryrun" in args.snakargs:        
-        shutil.rmtree(args.RESDIR)
 
 if __name__ == "__main__":
     main()

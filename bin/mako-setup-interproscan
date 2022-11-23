@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os
+import argparse
+import shutil
+import multiprocessing
+import yaml
+from utils import utils
+from utils import log
+
+logger = log.setlogger("mgw-reads-qc-module")
+    
+def get_args():
+    parser = argparse.ArgumentParser(
+        prog='mgw-reads-qc',
+        description='long reads and short reads quality check')
+
+    parser.add_argument('-d','--interproscan-dir', 
+        required=True, 
+        default=None,  
+        type=str, 
+        help = "Directory where interproscan will be stored.")
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = get_args()
+
+    o = os.system(
+        """
+            mkdir -p {dir};
+            curl https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.59-91.0/interproscan-5.59-91.0-64-bit.tar.gz > {dir}/interproscan-5.59-91.0-64-bit.tar.gz ;
+            curl https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.59-91.0/interproscan-5.59-91.0-64-bit.tar.gz.md5 > {dir}/interproscan-5.59-91.0-64-bit.tar.gz ;
+            # Recommended checksum to confirm the download was successful:
+            md5sum -c -P {dir}/interproscan-5.59-91.0-64-bit.tar.gz.md5
+            # Must return *interproscan-5.59-91.0-64-bit.tar.gz: OK*
+            # If not - try downloading the file again as it may be a corrupted copy.
+            tar -pxvzf {dir}/interproscan-5.59-91.0-*-bit.tar.gz
+        """.format(
+            dir = args.interproscan_dir,
+        )
+    )
+    if o == 0:
+        f = os.path.abspath(os.path.join(__file__,"../.." , "interproscan.txt" )  )
+        print(f)
+        with open(f,"w") as stream:
+            stream.write(os.path.abspath(
+                args.interproscan_dir
+                )
+            )
+    else: 
+        logger.error("An error occure during interproscan download...")
+        exit(-1)
+
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+

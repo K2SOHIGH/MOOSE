@@ -3,15 +3,12 @@ configfile: "config/config.yaml"
 import os
 import logging
 import yaml
-from scripts.snakeutils import * 
 from utils import log
+from utils import utils
 
 
 wlogger = log.setlogger(__name__)
 
-def bins2batches(bins,batch_size=config["batch_size"]):    
-    batches = {"batch-{}".format(x//batch_size):list(bins.keys())[x:x+batch_size] for x in range(0,len(bins.keys()),batch_size) if x <= len(bins.keys())}
-    return batches
 
 def validate_config():
     if config["CheckM_data"] is None or not os.path.isdir(config["CheckM_data"]):
@@ -27,7 +24,7 @@ def validate_config():
 
 # config and input validation :
 validate_config()
-BINS = parse_input(config["genome_input"] , config["genome_extension"] )
+BINS = utils.parse_input(config["genome_input"] , config["genome_extension"] )
 
 if not BINS:
     wlogger.error("Can't retrieve your bins :( you might check your input or the genome extension.")
@@ -40,7 +37,7 @@ TMPDIR = config['res_dir'] + "/tmp"
 os.makedirs(TMPDIR, exist_ok=True)
 yaml.dump(config,  open( RESDIR + "/config.yaml","w") )
 
-BATCHES = bins2batches(BINS)
+BATCHES = utils.bins2batches(BINS,config["batch_size"])
 wlogger.info("Number of batches : {}".format(len(BATCHES)) )
 checkm_res = "lineage_wf"
 rank = None

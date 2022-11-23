@@ -14,6 +14,9 @@ except ModuleNotFoundError:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
+def bins2batches(bins,batch_size):    
+    batches = {"batch-{}".format(x//batch_size):list(bins.keys())[x:x+batch_size] for x in range(0,len(bins.keys()),batch_size) if x <= len(bins.keys())}
+    return batches
 
 def get_snakefile(dir, keyword):    
     return os.path.abspath(

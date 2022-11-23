@@ -2,6 +2,16 @@ mock:
   long_reads_type: nanopore
   reads:
     long_reads:
-    - /Users/mmillet/Documents/src/workflows/mgw-toolkit/mock/long_read_LR.fq.gz
+    - /Users/mmillet/Documents/src/workflows/mako/mock/long_read_LR.fq.gz
     paired_end:
-    - /Users/mmillet/Documents/src/workflows/mgw-toolkit/mock/sr_r1.fq.gz;/Users/mmillet/Documents/src/workflows/mgw-toolkit/mock/sr_r2.fq.gz
+    - /Users/mmillet/Documents/src/workflows/mako/mock/sr_r1.fq.gz;/Users/mmillet/Documents/src/workflows/mako/mock/sr_r2.fq.gz
+mock1:
+  long_reads_type: nanopore
+  reads:
+    paired_end:
+    - /Users/mmillet/Documents/src/workflows/mako/mock/sr_r1.fq.gz;/Users/mmillet/Documents/src/workflows/mako/mock/sr_r2.fq.gz
+# mock2:
+#   long_reads_type: nanopore
+#   reads:
+#     long_reads:
+#     - /Users/mmillet/Documents/src/workflows/mako/mock/long_read_LR.fq.gz

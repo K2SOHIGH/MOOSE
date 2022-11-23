@@ -11,56 +11,6 @@ from utils import sample
     FUNCTIONS
 """
 
-class AssemblyWorkflow:
-    workflows = {
-        "SRF": ["spades","unicycler"],
-        "SRO": ["megahit","spades","unicycler"],
-        "LRF": ["miniasm"],
-    }
-
-    def __init__(self,w):
-        self._workflow = w
-        self._assemblers = None
-        if w in AssemblyWorkflow.workflows : 
-            AssemblyWorkflow.workflows[w]
-        else:
-            wlogger.error("%s is not a valid workflows" % w)
-            exit(-1)
-
-    @property
-    def workflow(self):
-        return self._workflow
-
-    @property
-    def assemblers(self):
-        return self._assemblers
-
-    @assemblers.setter
-    def assemblers(self, list_of_assemblers):
-        v = self._validate(list_of_assemblers)
-        if v:
-            self._assemblers = v
-        else:
-            wlogger.error("No valid assembler defined for %s" % self.workflow)
-            exit(-1)
-
-
-    def _validate(self , assemblers):
-        l = []
-        for a in assemblers:        
-            if a not in AssemblyWorkflow.workflows[self.workflow]:
-                wlogger.warning("%s is not supported for %s workflow and will not be used" % (a,self.workflow))
-            else:
-                l.append(a)                
-        return l
-
-def setup_workflows():         
-    WORKFLOWS = {}    
-    for w in config["WORKFLOWS"]:  
-        w = AssemblyWorkflow(w)
-        w.assemblers = config["ASSEMBLERS"]
-        WORKFLOWS[w.workflow] = w.assemblers
-    return WORKFLOWS
 
 def get_assembly_products(wildcards):
     file = "final_assembly.fasta"
@@ -137,18 +87,6 @@ def extend_with_coassembly():
         coassembly_samples[coassembly_id] = SAMPLES.merge_sample( coassembly_id , samples_to_coassemble )
     return coassembly_samples
 
-def validate_samples():    
-    wlogger.info("Number of sample(s) : {}".format(len(SAMPLES.samples))    )
-    wlogger.info("Validating SAMPLE files and configuration ...")    
-    for sid, SAMPLE in SAMPLES.samples.items():           
-        if "auto" not in WORKFLOWS:             
-            if (len(SAMPLE.forward)==0 and len(SAMPLE.single)==0) and ("SRO" in WORKFLOWS or "hybrid" in WORKFLOWS) :
-                wlogger.error("Can't perform SRO, SRF neither LRF assembly if you don't provide short reads [{}]".format(sid))
-                exit(-1)                
-            if (len(SAMPLE.long)==0 )  and ("SRF" in WORKFLOWS or "LRF" in WORKFLOWS) :
-                wlogger.error("Can't perform SRF / LRF assembly if you don't provide long reads [{}]".format(sid))
-                exit(-1)    
-    wlogger.info("Things seems good .... but who know ?")  
 
 def format_spades_paired_end_inputs(wildcards,input):
     paired_end_reads = ""

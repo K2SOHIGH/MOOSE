@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+configfile: "config/config.yaml"
+
+import os
+import pandas as pd
+import yaml
+import logging
+
+from utils import utils
+from utils import log
+
+wlogger = log.setlogger(__name__)
+
+
+def find_interpro():
+    
+
+
+
+CDS = utils.parse_input(config["cds_input"] , config["cds_extension"] )
+
+FASTAS = input_from_yaml(config["input_file"])
+
+rule interproscan_target:
+    output:
+        os.path.join(config["res_dir"],"interproscan.tsv"),
+    input:
+        expand(os.path.join(config["res_dir"],"interproscan","tables","IP_{fasta}.tsv"),fasta=FASTAS,),
+    shell:
+        "cat {input} >> {output}"
+
+
+rule interproscan:
+    output:
+        os.path.join(config["res_dir"],"interproscan","tables","IP_{fasta}.tsv")
+    input:
+        lambda wildcards: FASTAS[wildcards.fasta], 
+    params:
+        interproscan_dir = INTERPROSCAN,
+        prefix = os.path.join(config["res_dir"],"interproscan","tables","IP_{fasta}"),
+        tmp = os.path.join(config["res_dir"],"interproscan","tables","tmp"),
+    log:
+        os.path.join(config["res_dir"],"logs","interproscan.{fasta}.log")   
+    threads:
+        10
+    conda: 
+        "envs/InterProScan-5.52.yaml"
+    shell:        
+        "{params.interproscan_dir}/interproscan.sh -i {input} -b {params.prefix} -f TSV -T {params.tmp} -dp --cpu {threads} >> {log} 2>> {log}"
+
