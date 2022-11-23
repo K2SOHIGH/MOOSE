@@ -1,7 +1,7 @@
-# MGW
+# MAKO
+MetAgenomics worKflOws 
 
+<p align="center">
+  <img src="mako.png">
+</p>
 
-## QC command
-
-
-## ASSEMBLE command
