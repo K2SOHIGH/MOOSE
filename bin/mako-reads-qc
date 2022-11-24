@@ -8,12 +8,12 @@ import yaml
 from utils import utils
 from utils import log
 
-logger = log.setlogger("mgw-reads-qc-module")
+logger = log.setlogger(__name__)
     
 
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-reads-qc',
+        prog='mako-reads-qc',
         description='long reads and short reads quality check')
 
     parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")
