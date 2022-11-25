@@ -13,6 +13,14 @@ from utils import log
 
 logger = log.setlogger("prodigal-snakemake-module")
 
+def find_interpro():
+    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "interproscan.txt" ) )
+    if os.path.exists(f):
+        interprodir = open(f).read()
+        if os.path.isdir(interprodir):
+            return interprodir
+    return None
+
 
 
 def get_args():
@@ -24,35 +32,42 @@ def get_args():
     parser.add_argument(
         '-i',
         '--input',
-        dest="genome_input",
+        dest="INPUT",
         type = str,
         required=True,
-        help="yaml file containing path to genomes files in fasta format , a fasta file or a directory containing fasta files"
+        help="yaml file containing path to translated cds files , a fasta file or a directory containing fasta files"
         )
     
     parser.add_argument(
         '-o',
         '--output-directory',
-        dest= "res_dir",
+        dest= "RESDIR",
         type = str,
-        default="mako-prodigal",
+        default="mako-interpro",
         help="output directory"
     )
 
-    parser.add_argument(
-        '--checkm-stats',                
+    parser.add_argument(        
+        '--interproscan-dir',                
         type = str,
-        default=None,
-        #help="path to another gtdb-wf results directory"
+        default=find_interpro(),
+        help="path to interproscan directory"
     )    
 
     parser.add_argument(
         '-e',
         '--extension',
-        dest = "genome_extension",
+        dest = "extension",
         type = str,
-        default="fna.gz",
-        help="genome file extension"
+        default="fasta.gz",
+        help="input file extension"
+    )
+
+    parser.add_argument(        
+        "--type",
+        default="proteic",
+        choices=['proteic','nucleic'],
+        help= "input sequences type"
     )
         
     parser.add_argument(
@@ -69,10 +84,11 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def main():
+def main():    
     args = get_args()
+
     utils.module(
-        "prodigal-snakemake-module",
+        "interproscan-snakemake-module",
         os.path.join( 
             os.path.abspath(
                 os.path.dirname(__file__)

@@ -34,7 +34,9 @@ def get_args():
 
     parser.add_argument('-o', '--output-dir' , dest="RESDIR" , default = "." , type=str)
 
-    parser.add_argument('-d', '--dbs' , dest="DBDIR"  , default = None , type=str , help="where anvi'o database should be stored")
+    parser.add_argument('-d', '--db' , dest="DBDIR"  , default = None , type=str , help="where anvi'o database should be stored")
+    
+    parser.add_argument('--reset-db' , action="store_true" , help="if you want to download database again")
         
     parser.add_argument(        
         '--threads',

@@ -86,7 +86,11 @@ Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
 Exemple usage :
 
 ```
+<<<<<<< HEAD
 mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
+=======
+mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o CLASSIF
+>>>>>>> 226e82167234c6caf447b88b15365740a8d25634
 ```
 ### mako-genomes-quality-checkm
 **WARNING : waiting an access to my cluster to test it.**
@@ -98,6 +102,7 @@ Exemple usage :
 mako-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
 ```
 
+<<<<<<< HEAD
 ## cds-based-features
 
 ### mako-setup-interproscan
@@ -116,4 +121,6 @@ Annotate cds in proteic or nucleic format from one or more fasta file using inte
 mako-cds-classify-interproscan -i <dir_with_*.fasta> --type proteic -e .fasta -o. INTERPRO-CLASSIFY --threads 15
 ```
 
+=======
+>>>>>>> 226e82167234c6caf447b88b15365740a8d25634
 

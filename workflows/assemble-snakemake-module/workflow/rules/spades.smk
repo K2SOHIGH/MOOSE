@@ -11,7 +11,7 @@ rule assembly_with_spades:
     params:
         spades_paired_end_reads = lambda wildcards, input : format_spades_paired_end_inputs(wildcards,input) if wildcards.assembly_type in ["SRO","SRF"] else "",
         spades_single_end_reads  = lambda wildcards, input : format_spades_single_end_inputs(wildcards,input) if wildcards.assembly_type in ["SRO","SRF"] else "", 
-        spades_long_reads  = lambda wildcards, input : format_spades_long_reads_inputs(wildcards,input),                
+        spades_long_reads  = lambda wildcards, input : format_spades_long_reads_inputs(wildcards,input) if wildcards.assembly_type in ["SRF"] else "",                
         outdir = os.path.join( RESDIR, SAMPLES_DIR , "{sample}", "{assembly_type}" , "spades"),
         spades_cmd = utils.parse_spades_cmdline(config["SPADES"]) if config["SPADES"] else "",
         assembly_mode = "--{}".format(config["MODE"]) if config["MODE"] else "",

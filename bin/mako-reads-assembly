@@ -9,11 +9,11 @@ import yaml
 from utils import log
 from utils import utils
 
-logger = log.setlogger("mgw-assembly-module")
+logger = log.setlogger(__name__)
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-assemble',
+        prog='mako-reads-assembly',
         description='Assemble reads into assembly'
     )
 

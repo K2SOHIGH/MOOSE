@@ -18,7 +18,7 @@ rule assembly_with_unicycler:
     params:
         unicycler_paired_end_reads = lambda wildcards, input : "-1 {} -2 {}".format(input.R1,input.R2) if input.R1 and input.R2 else "",
         unicycler_single_end_reads = lambda wildcards, input : "-s {}".format(input.SR) if input.SR else "",
-        unicycler_long_reads       = lambda wildcards, input : "-l {}".format(input.LR) if input.LR else "",
+        unicycler_long_reads       = lambda wildcards, input : "-l {}".format(input.LR) if input.LR and wildcards.assembly_type in ["SRF"] else "",
         outdir  = os.path.join(RESDIR, SAMPLES_DIR , "{sample}","{assembly_type}" , "unicycler"),
         unicycler_cmd = utils.parse_unicycler_cmdline(config["UNICYCLER"]) if config["UNICYCLER"] else "",        
         #kmers = config["KLIST"],

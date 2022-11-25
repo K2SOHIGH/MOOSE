@@ -5,10 +5,11 @@ import argparse
 import shutil
 import multiprocessing
 import yaml
+
 from utils import utils
 from utils import log
 
-logger = log.setlogger("mgw-anvio-magic-module")
+logger = log.setlogger(__file__)
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -41,47 +42,12 @@ def get_args():
     return args
 
 def main():
-    args = get_args()
-    logger.info("Running anvio-magic-snakemake-module !")
-
-    cprefix = os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs")
-        
-    logger.info("Snakemake will install conda environment in %s" % cprefix)
-    args.RESDIR = os.path.abspath(args.RESDIR)
-    
-    CONTIGS = yaml.load( open(args.CONTIGS) , Loader = yaml.SafeLoader )
-    if CONTIGS:
-        try:
-            os.makedirs( args.RESDIR , exist_ok = args.rerun )
-            logger.info("Results will be store in {}".format(args.RESDIR))
-        except FileExistsError:
-            logger.error("Can't create output directory, output directory already exist (use --rerun flag if you're sure) [{}]".format(args.RESDIR))
-            exit(-1)   
-  
-        CONFIG = utils.args2dict(args)
-    
-        yaml.dump( CONFIG, open( args.RESDIR + "/config.yaml" ,"w" ) )
-    
-        excode = utils.run_snakemake(            
-            os.path.join(os.path.dirname(__file__),".."),
-            "anvio-magic",
-            args.RESDIR + "/config.yaml",
-            args.threads,
-            cprefix,
-            args.snakargs       
+    args = get_args()                
+    utils.module(
+            "anvio-magic-snakemake-module",
+            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
+            args
         )
-
-        if excode != 0:
-            logger.error("Hum ... something went wrong while executing the workflow ... :( ")
-            exit(-1)
-        logger.info("anvi'o magic was impressive, Nice ! ")
-    else:
-        logger.error("Can't retrieve your contigs ... :(")
-        exit(-1)
-    
-    if "-n" in args.snakargs or "--dryrun" in args.snakargs:
-        logger.info("removing %s as it was a dryrun." % args.RESDIR)
-        shutil.rmtree(args.RESDIR)
 
 
 if __name__ == "__main__":    
