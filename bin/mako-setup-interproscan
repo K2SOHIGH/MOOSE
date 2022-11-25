@@ -27,27 +27,32 @@ def get_args():
 
 def main():
     args = get_args()
-
+    
     o = os.system(
         """
             mkdir -p {dir};
             curl https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.59-91.0/interproscan-5.59-91.0-64-bit.tar.gz > {dir}/interproscan-5.59-91.0-64-bit.tar.gz ;
-            curl https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.59-91.0/interproscan-5.59-91.0-64-bit.tar.gz.md5 > {dir}/interproscan-5.59-91.0-64-bit.tar.gz ;
+            curl https://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.59-91.0/interproscan-5.59-91.0-64-bit.tar.gz.md5 > {dir}/interproscan-5.59-91.0-64-bit.tar.gz.md5 ;
             # Recommended checksum to confirm the download was successful:
-            md5sum -c -P {dir}/interproscan-5.59-91.0-64-bit.tar.gz.md5
+            md5sum -c {dir}/interproscan-5.59-91.0-64-bit.tar.gz.md5
             # Must return *interproscan-5.59-91.0-64-bit.tar.gz: OK*
             # If not - try downloading the file again as it may be a corrupted copy.
-            tar -pxvzf {dir}/interproscan-5.59-91.0-*-bit.tar.gz
+            tar -pxvzf {dir}/interproscan-5.59-91.0-*-bit.tar.gz -C {dir}
+            rm -rf {dir}/interproscan-5.59-91.0-*-bit.tar.gz;
+            cd {dir}/interproscan-5.59-91.0;
+            python3 setup.py interproscan.properties;
+            cd --
         """.format(
             dir = args.interproscan_dir,
         )
     )
-    if o == 0:
-        f = os.path.abspath(os.path.join(__file__,"../.." , "interproscan.txt" )  )
-        print(f)
+
+    if o == 0:            
+        f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "interproscan.txt" )  )
+        os.makedirs(os.path.dirname(f),exist_ok=True)
         with open(f,"w") as stream:
             stream.write(os.path.abspath(
-                args.interproscan_dir
+                args.interproscan_dir + "/interproscan-5.59-91.0"
                 )
             )
     else: 
@@ -61,4 +66,4 @@ if __name__ == "__main__":
 
 
 
-
+    
