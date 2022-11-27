@@ -124,6 +124,8 @@ rule anvio_cogs:
         "anvi-run-ncbi-cogs -c {input[0]} --num-threads {threads} && touch {output}"
 
 
+rule anvio_pfams
+
 rule anvio_contig_db:
     output:
         os.path.join(RESDIR, "{contig}", "CONTIGS.db"),
