@@ -1,41 +1,41 @@
-# MAKO
+# MAKOS
 MetAgenomics worKflOws 
 
 <p align="center">
   <img src="mako.png">
 </p>
 
-MAKO is basically a bunch of wrapper/tools to process one or more samples/genomes through classical workflows in (meta)genomics such as megahit, SPADES, CheckM, GTDB-TK, Prodigal, etc...
+MAKOS is basically a bunch of wrapper/tools to process one or more samples/genomes through classical workflows in (meta)genomics such as megahit, SPADES, CheckM, GTDB-TK, Prodigal, etc...
 Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.io/en/stable/) and can be easily deployed on a cluster.
 
 # Current features
 
 - [reads-based-features](#reads-based-features)
-	- [mako-reads-qc](#mako-reads-qc)
-	- [mako-reads-assembly](#mako-reads-assembly)
+	- [makos-reads-qc](#makos-reads-qc)
+	- [makos-reads-assembly](#makos-reads-assembly)
 - [genomes-based-features](#genomes-based-features)
-	- [mako-genomes-genecall-prodigal](#mako-genomes-genecall-prodigal)
-	- [mako-genomes-estimate-anvio](#mako-genomes-estimate-anvio)
-	- [mako-genomes-classify-checkm](#mako-genomes-classify-checkm)
-	- [mako-genomes-estimate-anvio](#mako-genomes-estimate-anvio)
+	- [makos-genomes-genecall-prodigal](#makos-genomes-genecall-prodigal)
+	- [makos-genomes-estimate-anvio](#makos-genomes-estimate-anvio)
+	- [makos-genomes-classify-checkm](#makos-genomes-classify-checkm)
+	- [makos-genomes-estimate-anvio](#makos-genomes-estimate-anvio)
 
 
 ## reads-based-features
 
-### mako-reads-qc
+### makos-reads-qc
 
 Check your reads quality using fastqc for short reads and nanoplot for long ones. Summarize all your samples reads quality in a single report using multiqc.
 
-mako-make-sample-file might be used to produce the input file.
+makos-make-sample-file might be used to produce the input file.
 
 Exemple usage :
 
 ```
-mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
-mako-reads-qc -i samples.yaml -o READSQC 
+makos-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
+makos-reads-qc -i samples.yaml -o READSQC 
 ```
 
-### mako-reads-assembly
+### makos-reads-assembly
 
 **WARNING : SRF and LRF not tested yet.**
 
@@ -49,36 +49,36 @@ Map your reads against your assembly for coverage estimation using bowtie2 and s
 Estimate assembly quality using seqfu and Quast.
 Summarize all your samples' assembly quality in a single report using multiqc.
 
-Again, mako-make-sample-file might be used to produce the input file.
+Again, makos-make-sample-file might be used to produce the input file.
 
 Exemple usage :
 
 ```
-mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
-mako-reads-assembly -i samples.yaml -o ASSEMBLY --workflow SRO SRF  
+makos-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
+makos-reads-assembly -i samples.yaml -o ASSEMBLY --workflow SRO SRF  
 ```
 
 ## genomes-based-features
 
-### mako-genomes-genecall-prodigal
+### makos-genomes-genecall-prodigal
 Predict genes in your input genome(s) using Prodigal
 
 Exemple usage :
 
 ```
-mako-genomes-genecall-prodigal -i <dir_with_fna> -e .fna.gz -o GENECALL
+makos-genomes-genecall-prodigal -i <dir_with_fna> -e .fna.gz -o GENECALL
 ```
 
-### mako-genomes-estimate-anvio
+### makos-genomes-estimate-anvio
 Estimate your input genome(s) taxonomy and quality using anvi'o.
 
 Exemple usage :
 
 ```
-mako-genomes-estimate-anvio -i <dir_with_*.fna.gz_files> -e .fna.gz -o ANVIO-ESTIMATE
+makos-genomes-estimate-anvio -i <dir_with_*.fna.gz_files> -e .fna.gz -o ANVIO-ESTIMATE
 ```
 
-### mako-genomes-classify-gtdbtk
+### makos-genomes-classify-gtdbtk
 **WARNING : waiting an access to my cluster to test it.**
 
 Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
@@ -86,41 +86,40 @@ Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
 Exemple usage :
 
 ```
-<<<<<<< HEAD
-mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
-=======
-mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o CLASSIF
->>>>>>> 226e82167234c6caf447b88b15365740a8d25634
+makos-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
 ```
-### mako-genomes-quality-checkm
+### makos-genomes-quality-checkm
 **WARNING : waiting an access to my cluster to test it.**
 
 Estimate completness and redundancy of your input genome(s) using CheckM.
 Exemple usage :
 
 ```
-mako-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
+makos-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
 ```
 
-<<<<<<< HEAD
 ## cds-based-features
 
-### mako-setup-interproscan
+### makos-setup-interproscan
 
 Download interproscan databases and executable to a specific location.
 
 ```
-mako-setup-interproscan -d path/to/interproscan/directory
+makos-setup-interproscan -d path/to/interproscan/directory
 ```
 
-### mako-cds-classify-interproscan
+### makos-cds-classify-interproscan
 
 Annotate cds in proteic or nucleic format from one or more fasta file using interproscan databases and output a single table.
 
 ```
-mako-cds-classify-interproscan -i <dir_with_*.fasta> --type proteic -e .fasta -o. INTERPRO-CLASSIFY --threads 15
+makos-cds-classify-interproscan -i <dir_with_*.fasta> --type proteic -e .fasta -o. INTERPRO-CLASSIFY --threads 15
 ```
 
-=======
->>>>>>> 226e82167234c6caf447b88b15365740a8d25634
 
+
+
+
+
+
+-

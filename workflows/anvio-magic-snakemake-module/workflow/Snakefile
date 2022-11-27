@@ -1,90 +1,174 @@
-include: "../../share/fun.smk"
+#include: "../../share/fun.smk"
+
+from utils import utils
+from utils import log 
+
+
+
 wlogger = log.setlogger(__name__)
     
-
-"""
-    CONFIGS and GLOBALS
-"""
-
 wlogger.info("Grabing configuration and input files")
+
 RESDIR = config["RESDIR"]
-SAMPLES_DIR = "SAMPLES"
 
 
-CONTIGS = yaml.load(open(config["CONTIGS"]), Loader= yaml.SafeLoader )
-BAMS = yaml.load(open(config["BAMS"]), Loader= yaml.SafeLoader )
+CONTIGS = utils.parse_input(config["CONTIGS"], config["extension"])
+BAMS = utils.parse_input(config["BAMS"], config["extension"])
 
-if CONTIGS:
-    for s in CONTIGS:
-        if s not in BAMS:
-            wlogger.error("Missing bam(s) file(s) for sample {}".format(s))
-            exit(-1)
-else:
-    wlogger.error("CONTIGs file is empty. Byebye ! ")
+print(BAMS)
+
+if not CONTIGS or not BAMS:    
+    wlogger.error("Can't retrieve your contigs or bams from input file")
     exit(-1)
-wlogger.info("Input files seems corrects .... continuing ")
-DBFILE = os.path.join(os.path.dirname(__file__), ".." ,".anviodb.yaml")
 
-if os.path.exists( DBFILE ) : # db already present
-    wlogger.info("anvi'o databased are already installed ! Great :)")
-    IS_DBFILE = True
-else:
-    IS_DBFILE = False
-    wlogger.info("anvi'o databased are missing and will be installed !")
-    dbs = {"pfam":None,"cog":None,"scg":None,"kegg":None}
-    if "DBDIR" in config:
-        pass
-    else:
-        config["DBDIR"] = None
-    if config["DBDIR"]:
-        dbs["pfam"] = os.path.abspath(
-                    os.path.join(config["DBDIR"], "PFAM"))
-        dbs["cog"] = os.path.abspath(
-                    os.path.join(config["DBDIR"], "COG"))
-        dbs["scg"] = os.path.abspath(
-                    os.path.join(config["DBDIR"], "SCG"))
-        dbs["kegg"] = os.path.abspath(
-                    os.path.join(config["DBDIR"], "KEGG"))
-    
-wlogger.info("we can start anvi'o magic ! ")
-onstart:
-    wlogger.info("Anvio magic start ! ")
+wlogger.info("Input files seems corrects .... continuing ")
+wlogger.info("we can start anvi'o magic ! ")    
+
 onerror:
     wlogger.error("an error occured during anvio-magic WORKFLOW :(")
-
-PRODUCTS = {
-    "anvio-profile": os.path.join(RESDIR , SAMPLES_DIR , "{sample}" , "AnvioMAgic" , "{assembly}" , "PROFILES", "{bam}" , "PROFILE.db" ),
-    "anvio-merge": os.path.join(RESDIR , SAMPLES_DIR , "{sample}" , "AnvioMAgic" , "{assembly}" , "MERGED_PROFILES", "PROFILE.db" ),
-}
-
-def get_anvio_products(wildcards , product_type):
-    template = PRODUCTS[product_type]
-    files = expand(
-            template, 
-            sample = wildcards.sample , 
-            assembly = CONTIGS[wildcards.sample], 
-            bams = BAMS[wildcards.bams],
-        )
-    return files
 
 rule anvio:
     input:
         expand(
-            os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "anvio.done"), sample = CONTIGS
+            os.path.join(RESDIR, "{contig}", "anvio.done"), contig = CONTIGS
         )
 
+def get_profiles(wildcards):    
+    if len(BAMS[wildcards.contig]) > 1:        
+        return os.path.join(RESDIR, "{contig}", "MERGED_PROFILES", "PROFILE.db" )
+    return expand( os.path.join(RESDIR,wildcards.contig, "PROFILES", "{bam}", "PROFILE.db"),bam = BAMS[wildcards.contig],)
 
 rule anvio_contigs_workflow:
     output:
         touch(
             temp(
-                os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "anvio.done")
+                os.path.join(RESDIR , "{contig}", "anvio.done")
             ),
         )
     input:
-        lambda wildcards : get_anvio_products(wildcards , "anvio-merge") \
-            if len(BAMS[wildcards.sample]) > 1 else \
-            get_anvio_products(wildcards , "anvio-profile")
-        
+        get_profiles,
 
-include: "rules/anvio.smk"
+def aggregate_profiles(wildcards):
+    return expand(
+        os.path.join(RESDIR, wildcards.contig , "PROFILES", "{bam}" , "PROFILE.db" ),
+        bam = BAMS[wildcards.contig],    
+    ) 
+    
+rule anvio_merge_profile:
+    output:
+        os.path.join(RESDIR, "{contig}", "MERGED_PROFILES", "PROFILE.db" ),
+    input:
+        profiles = aggregate_profiles,
+        db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
+    params:
+        outdir =  os.path.join(RESDIR, "{contig}", "MERGED_PROFILES"),
+    threads:
+        10
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-merge "
+        "-S {wildcards.contig} "
+        "-c {input.db} "
+        "-o {params.outdir} {input.profiles} "
+
+
+rule anvio_profile:
+    output:
+        os.path.join(RESDIR, "{contig}", "PROFILES", "{bam}" , "PROFILE.db" ),
+    input:
+        bam = lambda wildcards : BAMS[wildcards.contig][wildcards.bam],
+        db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
+        f1 = os.path.join(RESDIR, "{contig}" , "scg.done"),
+        f2 = os.path.join(RESDIR, "{contig}" , "cogs.done"),
+    params:
+        outdir = os.path.join(RESDIR, "{contig}" , "PROFILES", "{bam}"),
+    threads:
+        10
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-profile -i {input.bam} "
+        "-W "
+        "-c {input.db} "
+        "-T {threads} "
+        "--output-dir {params.outdir} "
+        "--sample-name {wildcards.bam} "
+        "--cluster-contigs"
+
+rule anvio_import_taxo:
+    output:
+        os.path.join(RESDIR, "{contig}" , "scg.done"),
+    input:
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
+        # DBFILE,
+    params:
+        mode = "--metagenome-mode" if config["META"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-estimate-scg-taxonomy {params.mode} -c {input[0]} && touch {output}"
+
+
+rule anvio_cogs:
+    output:
+        os.path.join(RESDIR, "{contig}" , "cogs.done"),
+    input:
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
+        # DBFILE,
+    threads:
+        10
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-ncbi-cogs -c {input[0]} --num-threads {threads} && touch {output}"
+
+
+rule anvio_contig_db:
+    output:
+        os.path.join(RESDIR, "{contig}", "CONTIGS.db"),
+    input:
+        lambda wildcards : CONTIGS[wildcards.contig],
+    conda:
+        "envs/anvio-7.1.yaml"
+    threads:
+        10
+    shell:
+        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && anvi-run-hmms -c {input} --just-do-it"
+
+
+# rule anvio_setup_target:
+    # output:
+    #     DBFILE,
+    # input:
+    #     expand(
+    #         os.path.join(RESDIR, "anvio-{db}-setup.done"), db = ["scg","cogs","keggs","pfams"]
+    #     )
+    # params:
+    #     DBCONFIG = dbs,
+    # run:
+    #     if params.DBCONFIG:
+    #         yaml.dump(params.DBCONFIG,open(str(output),'w'))
+
+
+# rule anvio_setup:
+#     output:
+#         temp(os.path.join(RESDIR, "anvio-scg-setup.done")),
+#         temp(os.path.join(RESDIR, "anvio-cogs-setup.done")),
+#         temp(os.path.join(RESDIR, "anvio-pfams-setup.done")),
+#         temp(os.path.join(RESDIR, "anvio-keggs-setup.done")),
+#     params:        
+#         # IS_DBFILE = IS_DBFILE,
+#         PFAMDIR = "--pfam-data-dir {}".format(os.path.join(config["DBDIR"],"PFAM")) if config["DBDIR"] else "",
+#         SCGDIR  = "--scgs-taxonomy-data-dir {}".format(os.path.join(config["DBDIR"],"SCG")) if config["DBDIR"] else "",
+#         COGDIR  = "--cog-data-dir {}".format(os.path.join(config["DBDIR"],"COGS")) if config["DBDIR"] else "",
+#         KEGGDIR = "--kegg-data-dir {}".format(os.path.join(config["DBDIR"],"KEGGS")) if config["DBDIR"] else "",
+#     conda:
+#         "../envs/anvio-7.1.yaml"
+#     shell:
+#         """
+#             anvi-setup-scg-taxonomy {params.SCGDIR} -T {threads} && touch {output[0]} || true ;
+#             anvi-setup-ncbi-cogs    {params.COGDIR} -T {threads} && touch {output[1]} || true ;
+#             anvi-setup-pfams        {params.PFAMDIR} && touch {output[2]} || true ;
+#             anvi-setup-kegg-kofams  {params.KEGGDIR} && touch {output[3]} || true ;               
+#         """

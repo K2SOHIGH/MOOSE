@@ -16,7 +16,9 @@ def get_args():
         prog='mgw-anvio-magic',
         description='use anvi\'o magic on your assemblies')
 
-    parser.add_argument('-i', "--input-contigs" , dest="CONTIGS" , required=True, default=None ,  type=str , help = "CONTIGS input YAML file, see README.md for format.")
+    parser.add_argument('-i', "--input" , dest="CONTIGS" , required=True, default=None ,  type=str , help = "CONTIGS input YAML file, see README.md for format.")
+
+    parser.add_argument('-e', "--extension", default=".fasta" ,  type=str , help = "input files extension.")
     
     parser.add_argument('-b', "--bams" , dest="BAMS" , required=True, default=None ,  type=str , help = "BAMs input YAML file, see README.md for format.")
 
