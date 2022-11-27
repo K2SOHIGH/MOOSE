@@ -1,6 +1,31 @@
 # MAKOS
 MetAgenomics worKflOws 
 
+**TO DO**
+
+- mako-setup-anvi-databases
+- mako-contigs-estimate (quick way to estimate taxonomy and quality for your genomes)
+- mako-contigs-anvi-magic-mtg (use fna as input and perform profiling + annotations using pfam / kegg and cogg ~ metagenomics workflow)
+	- anvi-gen-contigs-database
+	- anvi-run-kegg-kofams
+	- anvi-run-ncbi-cogs
+	- anvi-run-pfam
+	- anvi-run-hmms
+	- anvi-run-taxonomy
+	- anvi-profile
+	- anvi-merge
+- mako-contigs-anvi-magic-pan (use fna as input and perform pangenomics analysis)
+	- anvi-gen-contigs-database
+	- anvi-run-kegg-kofams
+	- anvi-run-ncbi-cogs
+	- anvi-run-pfam
+	- anvi-run-hmms
+	- anvi-gen-genomes-storage (combining all data from all genomes)
+	- anvi-pan-genome (compare all genes to build genes clusters)
+	- anvi-display-pan
+
+
+
 <p align="center">
   <img src="mako.png">
 </p>
@@ -93,6 +118,16 @@ makos-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK
 
 Estimate completness and redundancy of your input genome(s) using CheckM.
 Exemple usage :
+
+```
+makos-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
+```
+
+## contigs-based-features
+
+### mako-contigs-anvio-magic
+
+Profile your contigs with BAM files using anvi-profile 
 
 ```
 makos-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
