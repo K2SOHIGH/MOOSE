@@ -30,6 +30,13 @@ def get_args():
         help = "project name."
     )
 
+    parser.add_argument('--function-only', 
+        dest="FUN_ONLY", 
+        action="store_true",
+        help = "Do not run pangenomic analysis but only export functions into table."
+    )
+
+
     parser.add_argument('-d', '--dbs' , dest="DBDIR"  , default = None , type=str , help="where anvi'o databases should be stored [~20Gb]")
 
     parser.add_argument('--rerun'  , action='store_true')

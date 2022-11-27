@@ -172,7 +172,21 @@ rule anvio_cogs:
 
 rule anvio_contig_db:
     output:
-        os.path.join(RESDIR, "{contig}", "CONTIGS.db"),
+        os.path.join(TMPDIR, "{contig}", "CONTIGS.db"),
+    input:
+        os.path.join(RESDIR, "{contig}", "tmp.fasta"),        
+    conda:
+        "envs/anvio-7.1.yaml"
+    threads:
+        10
+    shell:
+        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
+        "anvi-run-hmms -c {output} -T {threads} --just-do-it "
+
+
+rule anvio_contig_reformat:
+    output:
+        temp(os.path.join(RESDIR, "{contig}", "tmp.fasta")),
     input:
         lambda wildcards : CONTIGS[wildcards.contig],
     conda:
@@ -180,5 +194,5 @@ rule anvio_contig_db:
     threads:
         10
     shell:
-        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
-        "anvi-run-hmms -c {input} --just-do-it "
+        "anvi-script-reformat-fasta  -o {output} --simplify-names {input}"
+        

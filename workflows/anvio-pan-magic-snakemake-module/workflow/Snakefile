@@ -26,12 +26,19 @@ anviodbs = utils.get_anvio_db_path()
 onerror:
     wlogger.error("an error occured during anvio-magic WORKFLOW :(")
 
+TARGET = os.path.join(RESDIR,"pangenomics.done")
+if config["FUN_ONLY"]:
+    TARGET = os.path.join(RESDIR,"anvio-functions.txt")
 
-rule anvo_pangenomics:
+rule all:
+    input:
+        TARGET
+
+rule anvio_pangenomics:
     output:
         os.path.join(RESDIR,"pangenomics.done"),
     input:
-        os.path.join(RESDIR,"genomes.db"),
+        os.path.join(RESDIR,"pan-GENOMES.db"),
     params:
         outdir = os.path.join(RESDIR,"pangenomics"),
         name = config["NAME"],
@@ -48,11 +55,9 @@ rule anvo_pangenomics:
         "--mcl-inflation 10 "
         "--use-ncbi-blast && touch {output}"
     
-
-
 rule anvio_make_genome_db:
     output:
-        os.path.join(RESDIR,"genomes.db"),
+        os.path.join(RESDIR,"pan-GENOMES.db"),
     input:
         os.path.join(RESDIR,"external-genomes.txt"),
     conda:
@@ -80,21 +85,54 @@ rule anvio_make_genome_db_file:
         f4 = expand(
             os.path.join(TMPDIR, "{contig}" , "keggs.done"),
             contig = CONTIGS),
+    params:
+        resdir = RESDIR
     run:
         with open(str(output) , 'w' ) as stream:
+            stream.write("name\tcontigs_db_path\n")
             for f in input.db:
                 contig = os.path.dirname(f).split("/")[-1]
+                contig = contig.replace(".","_").replace("-","_")
+                
                 stream.write("{}\t{}\n".format(
                     contig,
-                    f
+                    os.path.relpath( f, start = str(params.resdir ))
                 ))
-        
+
+rule anvio_function_merge_table:
+    output:
+        os.path.join(RESDIR,"anvio-functions.txt")
+    input:
+        expand(
+            os.path.join(TMPDIR , "{contig}" , "anvio-functions.txt"), contig = CONTIGS
+        )        
+    shell:
+        "echo 'gene_callers_id;source;accession;function;e_value;contigfile' | tr ';' '\t' > {output} && "
+        "cat {input} >> {output}"
+        # "head -n 1 {input[0]} > {output} && tail -n +2 -q {input} >> {output}"
+
+
+rule anvio_function_table:
+    output:
+        txt = os.path.join(TMPDIR , "{contig}" , "anvio-functions.txt"),
+        tmp = temp(os.path.join(TMPDIR , "{contig}" , "anvio-functions.tmp")),
+    input: 
+        db = os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),             
+        f1 = os.path.join(TMPDIR, "{contig}" , "anvio.classify.tsv"),
+        f2 = os.path.join(TMPDIR, "{contig}" , "cogs.done"),
+        f3 = os.path.join(TMPDIR, "{contig}" , "pfams.done"),
+        f4 = os.path.join(TMPDIR, "{contig}" , "keggs.done"),
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-export-functions -c {input.db} -o {output.tmp} && "
+        "tail -n +2 {output.tmp} | sed 's/$/\t{wildcards.contig}/g' > {output.txt}"
 
 rule anvio_import_taxo:
     output:
         os.path.join(TMPDIR, "{contig}" , "scg.done"),
     input:
-        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),
+        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
     params:
         mode = "--metagenome-mode" if config["META"] else "",
     conda:
@@ -106,7 +144,7 @@ rule anvio_scg_taxonomy:
     output:
         os.path.join(TMPDIR , "{contig}" , "anvio.classify.tsv"),
     input:
-        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),        
+        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
     params:        
         scgdir  = "--scgs-taxonomy-data-dir {}".format(anviodbs) if anviodbs else "",          
     threads:
@@ -121,7 +159,7 @@ rule anvio_pfams:
     output:
         os.path.join(TMPDIR, "{contig}" , "pfams.done"),
     input:
-        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"), 
+        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
     threads:
         10
     params:
@@ -130,15 +168,15 @@ rule anvio_pfams:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-run-pfams {params.anviodbs} "
-        "-c {input} --num-threads {threads} "
-        "--just-do-it && touch {output} "
+        "-c {input} --num-threads {threads} && "
+        "touch {output} "
 
 
 rule anvio_keggs:
     output:
         os.path.join(TMPDIR, "{contig}" , "keggs.done"),
     input:
-        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"), 
+        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
     threads:
         10
     params:
@@ -155,7 +193,7 @@ rule anvio_cogs:
     output:
         os.path.join(TMPDIR, "{contig}" , "cogs.done"),
     input:
-        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),        
+        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")),     
     threads:
         10
     params:
@@ -173,11 +211,25 @@ rule anvio_contig_db:
     output:
         os.path.join(TMPDIR, "{contig}", "CONTIGS.db"),
     input:
-        lambda wildcards : CONTIGS[wildcards.contig],
+        os.path.join(RESDIR, "{contig}", "tmp.fasta"),        
     conda:
         "envs/anvio-7.1.yaml"
     threads:
         10
     shell:
         "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
-        "anvi-run-hmms -c {input} --just-do-it "
+        "anvi-run-hmms -c {output} -T {threads} --just-do-it "
+
+
+rule anvio_contig_reformat:
+    output:
+        temp(os.path.join(RESDIR, "{contig}", "tmp.fasta")),
+    input:
+        lambda wildcards : CONTIGS[wildcards.contig],
+    conda:
+        "envs/anvio-7.1.yaml"
+    threads:
+        10
+    shell:
+        "anvi-script-reformat-fasta  -o {output} --simplify-names {input}"
+        

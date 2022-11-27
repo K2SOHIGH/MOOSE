@@ -18,6 +18,13 @@ dbfile = config["file"]
 RESDIR = os.path.dirname(dbfile)
 dbdir = config["dir_anvio"]
 
+if os.path.exists(dbfile):
+    wlogger.warning("Databases have already been downloaded. If you want to re-download them use --force")
+    exit(0)
+
+if os.path.exists(dbfile) and config["force"]:
+    os.path.remove(dbfile)
+    config["reset"] = True
 
 rule anvio_setup_target:
     output:
@@ -34,26 +41,64 @@ rule anvio_setup_target:
                 stream.write(params.dbdir)
             else:
                 stream.write("")
-        
-rule anvio_setup:
-    output:
-        temp(os.path.join(RESDIR, "anvio-scg-setup.done")),
-        temp(os.path.join(RESDIR, "anvio-cogs-setup.done")),
-        temp(os.path.join(RESDIR, "anvio-pfams-setup.done")),
+
+
+rule anvio_setup_keggs:
+    output:                
         temp(os.path.join(RESDIR, "anvio-keggs-setup.done")),
+    threads:
+        15
     params:
-        # IS_DBFILE = IS_DBFILE,
-        PFAMDIR = "--pfam-data-dir {}".format(dbdir) if dbdir else "",
-        SCGDIR  = "--scgs-taxonomy-data-dir {}".format(dbdir) if dbdir else "",
-        COGDIR  = "--cog-data-dir {}".format(dbdir) if dbdir else "",
         KEGGDIR = "--kegg-data-dir {}".format(dbdir) if dbdir else "",
         RESET = "--reset" if config["reset"] else "",
     conda:
         "envs/anvio-7.1.yaml"
     shell:
+        """            
+            anvi-setup-kegg-kofams {params.RESET} {params.KEGGDIR} && touch {output} || true ;
         """
-            anvi-setup-scg-taxonomy {params.RESET} {params.SCGDIR} -T {threads} && touch {output[0]} || true ;
-            anvi-setup-ncbi-cogs    {params.RESET} {params.COGDIR} -T {threads} && touch {output[1]} || true ;
-            anvi-setup-pfams        {params.RESET} {params.PFAMDIR} && touch {output[2]} || true ;
-            anvi-setup-kegg-kofams  {params.RESET} {params.KEGGDIR} && touch {output[3]} || true ;
+
+rule anvio_setup_pfams:
+    output:                
+        temp(os.path.join(RESDIR, "anvio-pfams-setup.done")),
+    threads:
+        15
+    params:
+        PFAMDIR = "--pfam-data-dir {}".format(dbdir) if dbdir else "",
+        RESET = "--reset" if config["reset"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        """            
+            anvi-setup-pfams {params.RESET} {params.PFAMDIR} && touch {output} || true ;
+        """
+
+rule anvio_setup_scg:
+    output:                
+        temp(os.path.join(RESDIR, "anvio-scg-setup.done")),
+    threads:
+        15
+    params:
+        SCGDIR  = "--scgs-taxonomy-data-dir {}".format(dbdir) if dbdir else "",
+        RESET = "--reset" if config["reset"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        """            
+            anvi-setup-scg-taxonomy {params.RESET} {params.SCGDIR} -T {threads} && touch {output} || true ;
+        """
+
+rule anvio_setup_cogs:
+    output:        
+        temp(os.path.join(RESDIR, "anvio-cogs-setup.done")),            
+    threads:
+        15
+    params:                        
+        COGDIR  = "--cog-data-dir {}".format(dbdir) if dbdir else "",        
+        RESET = "--reset" if config["reset"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        """            
+            anvi-setup-ncbi-cogs    {params.RESET} {params.COGDIR} -T {threads} && touch {output} || true ;                        
         """

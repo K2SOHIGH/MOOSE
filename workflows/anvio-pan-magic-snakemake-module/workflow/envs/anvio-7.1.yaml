@@ -5,33 +5,35 @@ channels:
   - defaults
 dependencies:
   - python=3.7
-  - sqlite
-  - prodigal
-  - idba
-  - mcl
-  - muscle=3.8.1551
-  - hmmer
+  - sqlite 
+  - prodigal 
+  - idba 
+  - mcl 
+  - muscle=3.8.1551 
+  - hmmer 
   - diamond
-  - blast
-  - megahit
-  - spades
-  - bowtie2
-  - tbb=2020.3
-  - bwa
+  - blast 
+  - megahit 
+  - spades 
+  - bowtie2 
+  - tbb=2020.3 
+  - bwa 
   - graphviz
-  - samtools>=1.9
-  - trimal
-  - iqtree
-  - trnascan-se
-  - fasttree
-  - vmatch
-  - r-base
-  - r-tidyverse
-  - r-optparse
-  - r-stringi
+  - samtools>=1.9 
+  - trimal 
+  - iqtree 
+  - trnascan-se 
+  - fasttree 
+  - vmatch 
+  - r-base 
+  - r-tidyverse 
+  - r-optparse 
+  - r-stringi 
   - r-magrittr
   - bioconductor-qvalue
   - fastani
   - pip
   - pip:
     - git+https://github.com/merenlab/anvio.git
+
+
