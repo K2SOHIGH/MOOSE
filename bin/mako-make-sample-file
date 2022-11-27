@@ -10,12 +10,12 @@ import yaml
 from utils import utils
 from utils import log
 
-logger = log.setlogger(__file__)
+logger = log.setlogger(__name__)
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-assemble',
-        description='Assemble reads into assembly')
+        prog=__name__,
+        description='make a yaml file from paired-end reads and long reads based on file pattern')
 
     parser.add_argument('-i' , default= "." ,  type=str , help = "input directory")
 

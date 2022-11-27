@@ -10,13 +10,13 @@ from utils import utils
 from utils import log
 
 
-logger = log.setlogger("checkm-snakemake-module")
+logger = log.setlogger(__name__)
 
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog='checkm-wf',
-            description='process genomes by batches through checkm lineage or taxonomic workflow'
+            prog=__name__,
+            description='Process genomes by batches through checkm lineage or taxonomic workflow'
         )
 
     parser.add_argument(

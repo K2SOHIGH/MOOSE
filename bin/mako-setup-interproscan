@@ -8,12 +8,12 @@ import yaml
 from utils import utils
 from utils import log
 
-logger = log.setlogger("mgw-reads-qc-module")
+logger = log.setlogger(__name__)
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mgw-reads-qc',
-        description='long reads and short reads quality check')
+        prog=__name__,
+        description='Setup interproscan database and executable')
 
     parser.add_argument('-d','--interproscan-dir', 
         required=True, 

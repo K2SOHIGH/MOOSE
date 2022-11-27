@@ -3,8 +3,6 @@ MetAgenomics worKflOws
 
 **TO DO**
 
-- mako-setup-anvi-databases
-- mako-contigs-estimate (quick way to estimate taxonomy and quality for your genomes)
 - mako-contigs-anvi-magic-mtg (use fna as input and perform profiling + annotations using pfam / kegg and cogg ~ metagenomics workflow)
 	- anvi-gen-contigs-database
 	- anvi-run-kegg-kofams

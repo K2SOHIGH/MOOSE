@@ -1,9 +1,5 @@
-#include: "../../share/fun.smk"
-
 from utils import utils
 from utils import log 
-
-
 
 wlogger = log.setlogger(__name__)
     
@@ -11,11 +7,9 @@ wlogger.info("Grabing configuration and input files")
 
 RESDIR = config["RESDIR"]
 
-
 CONTIGS = utils.parse_input(config["CONTIGS"], config["extension"])
-BAMS = utils.parse_input(config["BAMS"], config["extension"])
 
-print(BAMS)
+BAMS = utils.parse_input(config["BAMS"], config["extension"])
 
 if not CONTIGS or not BAMS:    
     wlogger.error("Can't retrieve your contigs or bams from input file")
@@ -23,6 +17,8 @@ if not CONTIGS or not BAMS:
 
 wlogger.info("Input files seems corrects .... continuing ")
 wlogger.info("we can start anvi'o magic ! ")    
+
+anviodbs = utils.get_anvio_db_path()
 
 onerror:
     wlogger.error("an error occured during anvio-magic WORKFLOW :(")
@@ -79,8 +75,10 @@ rule anvio_profile:
     input:
         bam = lambda wildcards : BAMS[wildcards.contig][wildcards.bam],
         db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
-        f1 = os.path.join(RESDIR, "{contig}" , "scg.done"),
+        f1 = os.path.join(RESDIR, "{contig}" , "anvio.classify.tsv"),
         f2 = os.path.join(RESDIR, "{contig}" , "cogs.done"),
+        f3 = os.path.join(RESDIR, "{contig}" , "pfams.done"),
+        f4 = os.path.join(RESDIR, "{contig}" , "keggs.done"),        
     params:
         outdir = os.path.join(RESDIR, "{contig}" , "PROFILES", "{bam}"),
     threads:
@@ -101,30 +99,76 @@ rule anvio_import_taxo:
         os.path.join(RESDIR, "{contig}" , "scg.done"),
     input:
         os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
-        # DBFILE,
     params:
         mode = "--metagenome-mode" if config["META"] else "",
     conda:
         "envs/anvio-7.1.yaml"
     shell:
-        "anvi-estimate-scg-taxonomy {params.mode} -c {input[0]} && touch {output}"
+        "anvi-estimate-scg-taxonomy {params.mode} -c {input} && touch {output}"
 
-
-rule anvio_cogs:
+rule anvio_scg_taxonomy:
     output:
-        os.path.join(RESDIR, "{contig}" , "cogs.done"),
+        os.path.join(RESDIR , "{contig}" , "anvio.classify.tsv"),
     input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
-        # DBFILE,
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),        
+    params:        
+        scgdir  = "--scgs-taxonomy-data-dir {}".format(anviodbs) if anviodbs else "",          
     threads:
         10
     conda:
         "envs/anvio-7.1.yaml"
     shell:
-        "anvi-run-ncbi-cogs -c {input[0]} --num-threads {threads} && touch {output}"
+        "anvi-run-scg-taxonomy {params.scgdir} -c {input} -T {threads} && "
+        "anvi-estimate-scg-taxonomy -c {input} -o {output}"
+
+rule anvio_pfams:
+    output:
+        os.path.join(RESDIR, "{contig}" , "pfams.done"),
+    input:
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"), 
+    threads:
+        10
+    params:
+        anviodbs = "--pfam-data-dir {}".format(anviodbs) if anviodbs else "",    
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-pfams {params.anviodbs} "
+        "-c {input} --num-threads {threads} "
+        "--just-do-it && touch {output} "
 
 
-rule anvio_pfams
+rule anvio_keggs:
+    output:
+        os.path.join(RESDIR, "{contig}" , "kegg.done"),
+    input:
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"), 
+    threads:
+        10
+    params:
+        anviodbs = "--kegg-data-dir {}".format(anviodbs) if anviodbs else "",    
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-kegg-kofams {params.anviodbs} "
+        "-c {input} --num-threads {threads} "
+        "--just-do-it && touch {output} "
+
+rule anvio_cogs:
+    output:
+        os.path.join(RESDIR, "{contig}" , "cogs.done"),
+    input:
+        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),        
+    threads:
+        10
+    params:
+        anviodbs = "--cog-data-dir {}".format(anviodbs) if anviodbs else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-ncbi-cogs {params.anviodbs) -c {input} --num-threads {threads} && "
+        "touch {output} "
+
 
 rule anvio_contig_db:
     output:
@@ -136,41 +180,5 @@ rule anvio_contig_db:
     threads:
         10
     shell:
-        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && anvi-run-hmms -c {input} --just-do-it"
-
-
-# rule anvio_setup_target:
-    # output:
-    #     DBFILE,
-    # input:
-    #     expand(
-    #         os.path.join(RESDIR, "anvio-{db}-setup.done"), db = ["scg","cogs","keggs","pfams"]
-    #     )
-    # params:
-    #     DBCONFIG = dbs,
-    # run:
-    #     if params.DBCONFIG:
-    #         yaml.dump(params.DBCONFIG,open(str(output),'w'))
-
-
-# rule anvio_setup:
-#     output:
-#         temp(os.path.join(RESDIR, "anvio-scg-setup.done")),
-#         temp(os.path.join(RESDIR, "anvio-cogs-setup.done")),
-#         temp(os.path.join(RESDIR, "anvio-pfams-setup.done")),
-#         temp(os.path.join(RESDIR, "anvio-keggs-setup.done")),
-#     params:        
-#         # IS_DBFILE = IS_DBFILE,
-#         PFAMDIR = "--pfam-data-dir {}".format(os.path.join(config["DBDIR"],"PFAM")) if config["DBDIR"] else "",
-#         SCGDIR  = "--scgs-taxonomy-data-dir {}".format(os.path.join(config["DBDIR"],"SCG")) if config["DBDIR"] else "",
-#         COGDIR  = "--cog-data-dir {}".format(os.path.join(config["DBDIR"],"COGS")) if config["DBDIR"] else "",
-#         KEGGDIR = "--kegg-data-dir {}".format(os.path.join(config["DBDIR"],"KEGGS")) if config["DBDIR"] else "",
-#     conda:
-#         "../envs/anvio-7.1.yaml"
-#     shell:
-#         """
-#             anvi-setup-scg-taxonomy {params.SCGDIR} -T {threads} && touch {output[0]} || true ;
-#             anvi-setup-ncbi-cogs    {params.COGDIR} -T {threads} && touch {output[1]} || true ;
-#             anvi-setup-pfams        {params.PFAMDIR} && touch {output[2]} || true ;
-#             anvi-setup-kegg-kofams  {params.KEGGDIR} && touch {output[3]} || true ;               
-#         """
+        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
+        "anvi-run-hmms -c {input} --just-do-it "

@@ -11,14 +11,14 @@ import multiprocessing
 from utils import utils
 from utils import log
 
-logger = log.setlogger("prodigal-snakemake-module")
+logger = log.setlogger(__name__)
 
 
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog='prodigal-snakemake-module',
-            description='run prodigal on a set of genomes'
+            prog=__name__,
+            description='Run prodigal on a set of genomes.'
         )
 
     parser.add_argument(

@@ -9,12 +9,12 @@ import multiprocessing
 from utils import utils
 from utils import log
 
-logger = log.setlogger("gtdb-snakemake-module")
+logger = log.setlogger(__name__)
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog='gtdb-wf',
-            description='process genomes by batches through gtdb-tk'
+            prog=__name__,
+            description='Process genomes by batches through gtdb-tk'
         )
 
     parser.add_argument(

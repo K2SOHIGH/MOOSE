@@ -25,6 +25,25 @@ def get_snakefile(dir, keyword):
             )[0]
         )
 
+def get_anvio_db_path():
+    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "anviodb.txt" )  )
+    logger.info("check if {} exists ...".format(f))
+    if os.path.exists(f):
+        db = ""
+        with open(f) as s:
+            for line in s.readlines():
+                db = line.strip()
+        if os.path.isdir(db):
+            logger.info("SCG_TAXONOMY db found here : {} ".format(db))
+            return "--scgs-taxonomy-data-dir {}".format(db)
+        else:
+            return ""                
+    else:
+        return ""        
+        #logger.error("Run mako-setup-anvio-databases first")
+        #exit(-1)
+        
+
 def module(module,cprefix,args):
     logger.info("Running %s !" % module)    
     logger.info("Snakemake will install conda environment in %s" % cprefix)

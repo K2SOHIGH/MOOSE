@@ -13,8 +13,8 @@ logger = log.setlogger(__name__)
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog='mako-reads-assembly',
-        description='Assemble reads into assembly'
+        prog=__name__,
+        description='Assemble reads into assembly.'
     )
 
     parser.add_argument('-i', "--input" , dest="INPUT" , required=True, default=None ,  type=str , help = "INPUT YAML file, see README.md for format.")

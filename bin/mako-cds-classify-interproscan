@@ -11,7 +11,7 @@ import multiprocessing
 from utils import utils
 from utils import log
 
-logger = log.setlogger("prodigal-snakemake-module")
+logger = log.setlogger(__name__)
 
 def find_interpro():
     f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "interproscan.txt" ) )
@@ -25,8 +25,8 @@ def find_interpro():
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog='prodigal-snakemake-module',
-            description='run prodigal on a set of genomes'
+            prog=__name__,
+            description='Annotate your sequences with interproscan.'
         )
 
     parser.add_argument(

@@ -10,19 +10,24 @@ from utils import log
 
 logger = log.setlogger(__name__)
     
-
 def get_args():
     parser = argparse.ArgumentParser(
         prog=__name__,
-        description='Long reads and short reads quality check')
+        description='Setup anvi\'o databases.')
 
-    parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")
+    parser.add_argument('-d','--dir-anvio', 
+        default=None,  
+        type=str, 
+        help = "Directory where anvio databases will be stored. [doesn't work using anvio-dev ]")
 
-    parser.add_argument('-o', '--output-dir'  , default = "." , type=str)
+    parser.add_argument('-r','--reset', 
+        default=None,  
+        action="store_true",
+        help = "reset anvi'o databases.")
+             
 
-    parser.add_argument('--rerun' , action='store_true')
-
-    parser.add_argument(        
+    parser.add_argument(
+        '-t',
         '--threads',
         type = int,
         default = multiprocessing.cpu_count()-1,
@@ -38,21 +43,18 @@ def get_args():
 
 def main():
     args = get_args()
+    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "anviodb.txt" )  )
+    args.file = f
+
     utils.module(
-        "reads-qc-snakemake-module",
-        os.path.join( 
-            os.path.abspath(
-                os.path.dirname(__file__)
-            ), 
-            "../condaenvs"
-        ),
+        "anvio-setup-databases",
+        os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
         args
     )
-
 
 if __name__ == "__main__":
     main()
 
 
 
-
+    

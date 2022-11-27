@@ -1,0 +1,183 @@
+from utils import utils
+from utils import log 
+
+wlogger = log.setlogger(__name__)
+    
+wlogger.info("Grabing configuration and input files")
+
+RESDIR = config["RESDIR"]
+TMPDIR = config["RESDIR"] + "/tmp"
+
+CONTIGS = utils.parse_input(config["CONTIGS"], config["extension"])
+
+if not CONTIGS:    
+    wlogger.error("Can't retrieve your contigs from input file")
+    exit(-1)
+
+if len(CONTIGS) == 1:
+    wlogger.error("Can't perform pangenomics analysis with one genome.")
+    exit(-1)
+
+wlogger.info("Input files seems corrects .... continuing ")
+wlogger.info("we can start anvi'o magic ! ")    
+
+anviodbs = utils.get_anvio_db_path()
+
+onerror:
+    wlogger.error("an error occured during anvio-magic WORKFLOW :(")
+
+
+rule anvo_pangenomics:
+    output:
+        os.path.join(RESDIR,"pangenomics.done"),
+    input:
+        os.path.join(RESDIR,"genomes.db"),
+    params:
+        outdir = os.path.join(RESDIR,"pangenomics"),
+        name = config["NAME"],
+    conda:  
+        "envs/anvio-7.1.yaml"
+    threads:
+        10
+    shell:
+        "anvi-pan-genome -g {input} "
+        "--project-name '{params.name}' "
+        "--output-dir {params.outdir} "
+        "--num-threads {threads} "
+        "--minbit 0.5 "
+        "--mcl-inflation 10 "
+        "--use-ncbi-blast && touch {output}"
+    
+
+
+rule anvio_make_genome_db:
+    output:
+        os.path.join(RESDIR,"genomes.db"),
+    input:
+        os.path.join(RESDIR,"external-genomes.txt"),
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-gen-genomes-storage -e {input} "
+        "-o {output}"
+
+rule anvio_make_genome_db_file:
+    output:
+        temp(os.path.join(RESDIR,"external-genomes.txt")),
+    input:
+        db = expand(
+            os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"), 
+            contig = CONTIGS),
+        f1 = expand(
+            os.path.join(TMPDIR, "{contig}" , "anvio.classify.tsv"),
+            contig = CONTIGS),
+        f2 = expand(
+            os.path.join(TMPDIR, "{contig}" , "cogs.done"),
+            contig = CONTIGS),
+        f3 = expand(
+            os.path.join(TMPDIR, "{contig}" , "pfams.done"),
+            contig = CONTIGS),
+        f4 = expand(
+            os.path.join(TMPDIR, "{contig}" , "keggs.done"),
+            contig = CONTIGS),
+    run:
+        with open(str(output) , 'w' ) as stream:
+            for f in input.db:
+                contig = os.path.dirname(f).split("/")[-1]
+                stream.write("{}\t{}\n".format(
+                    contig,
+                    f
+                ))
+        
+
+rule anvio_import_taxo:
+    output:
+        os.path.join(TMPDIR, "{contig}" , "scg.done"),
+    input:
+        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),
+    params:
+        mode = "--metagenome-mode" if config["META"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-estimate-scg-taxonomy {params.mode} -c {input} && touch {output}"
+
+rule anvio_scg_taxonomy:
+    output:
+        os.path.join(TMPDIR , "{contig}" , "anvio.classify.tsv"),
+    input:
+        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),        
+    params:        
+        scgdir  = "--scgs-taxonomy-data-dir {}".format(anviodbs) if anviodbs else "",          
+    threads:
+        10
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-scg-taxonomy {params.scgdir} -c {input} -T {threads} && "
+        "anvi-estimate-scg-taxonomy -c {input} -o {output}"
+
+rule anvio_pfams:
+    output:
+        os.path.join(TMPDIR, "{contig}" , "pfams.done"),
+    input:
+        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"), 
+    threads:
+        10
+    params:
+        anviodbs = "--pfam-data-dir {}".format(anviodbs) if anviodbs else "",    
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-pfams {params.anviodbs} "
+        "-c {input} --num-threads {threads} "
+        "--just-do-it && touch {output} "
+
+
+rule anvio_keggs:
+    output:
+        os.path.join(TMPDIR, "{contig}" , "keggs.done"),
+    input:
+        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"), 
+    threads:
+        10
+    params:
+        anviodbs = "--kegg-data-dir {}".format(anviodbs) if anviodbs else "",    
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-kegg-kofams {params.anviodbs} "
+        "-c {input} --num-threads {threads} "
+        "--just-do-it && touch {output} "
+
+
+rule anvio_cogs:
+    output:
+        os.path.join(TMPDIR, "{contig}" , "cogs.done"),
+    input:
+        os.path.join(TMPDIR, "{contig}" , "CONTIGS.db"),        
+    threads:
+        10
+    params:
+        anviodbs = "--cog-data-dir {}".format(anviodbs) if anviodbs else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        "anvi-run-ncbi-cogs {params.anviodbs} "
+        "-c {input} "
+        "--num-threads {threads} && "
+        "touch {output} "
+
+
+rule anvio_contig_db:
+    output:
+        os.path.join(TMPDIR, "{contig}", "CONTIGS.db"),
+    input:
+        lambda wildcards : CONTIGS[wildcards.contig],
+    conda:
+        "envs/anvio-7.1.yaml"
+    threads:
+        10
+    shell:
+        "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
+        "anvi-run-hmms -c {input} --just-do-it "

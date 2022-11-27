@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+configfile: "config/config.yaml"
+
+import os
+import pandas as pd
+import yaml
+import logging
+
+from utils import utils
+from utils import log
+
+
+wlogger = log.setlogger(__name__)
+
+dbfile = config["file"]
+RESDIR = os.path.dirname(dbfile)
+dbdir = config["dir_anvio"]
+
+
+rule anvio_setup_target:
+    output:
+        dbfile,
+    input:
+        expand(
+            os.path.join(RESDIR, "anvio-{db}-setup.done"), db = ["scg","cogs","keggs","pfams"]
+        )     
+    params:
+        dbdir = dbdir,   
+    run:
+        with open(str(output),'w') as stream:
+            if params.dbdir:
+                stream.write(params.dbdir)
+            else:
+                stream.write("")
+        
+rule anvio_setup:
+    output:
+        temp(os.path.join(RESDIR, "anvio-scg-setup.done")),
+        temp(os.path.join(RESDIR, "anvio-cogs-setup.done")),
+        temp(os.path.join(RESDIR, "anvio-pfams-setup.done")),
+        temp(os.path.join(RESDIR, "anvio-keggs-setup.done")),
+    params:
+        # IS_DBFILE = IS_DBFILE,
+        PFAMDIR = "--pfam-data-dir {}".format(dbdir) if dbdir else "",
+        SCGDIR  = "--scgs-taxonomy-data-dir {}".format(dbdir) if dbdir else "",
+        COGDIR  = "--cog-data-dir {}".format(dbdir) if dbdir else "",
+        KEGGDIR = "--kegg-data-dir {}".format(dbdir) if dbdir else "",
+        RESET = "--reset" if config["reset"] else "",
+    conda:
+        "envs/anvio-7.1.yaml"
+    shell:
+        """
+            anvi-setup-scg-taxonomy {params.RESET} {params.SCGDIR} -T {threads} && touch {output[0]} || true ;
+            anvi-setup-ncbi-cogs    {params.RESET} {params.COGDIR} -T {threads} && touch {output[1]} || true ;
+            anvi-setup-pfams        {params.RESET} {params.PFAMDIR} && touch {output[2]} || true ;
+            anvi-setup-kegg-kofams  {params.RESET} {params.KEGGDIR} && touch {output[3]} || true ;
+        """
