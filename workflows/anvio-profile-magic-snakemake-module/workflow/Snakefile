@@ -80,7 +80,7 @@ rule anvio_profile:
         f = os.path.join(RESDIR , "{contig}" , "anvio-functions.txt"),  
     params:
         outdir = os.path.join(RESDIR, "{contig}" , "PROFILES", "{bam}"),
-        name = lambda wildcards: wildcards.contig.replace(".","_").replace("-","_")
+        name = lambda wildcards: wildcards.bam.replace(".","_").replace("-","_")
     threads:
         10
     conda:
