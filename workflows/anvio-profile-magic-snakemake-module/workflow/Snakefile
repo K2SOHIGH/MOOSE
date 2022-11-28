@@ -65,6 +65,7 @@ rule anvio_merge_profile:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-merge "
+        "--force-overwrite "
         "-S {params.name} "
         "-c {input.db} "
         "-o {params.outdir} {input.profiles} "
