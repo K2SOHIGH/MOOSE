@@ -9,11 +9,12 @@ import yaml
 from utils import log
 from utils import utils
 
-logger = log.setlogger(__name__)
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog=__name__,
+        prog=os.path.basename(__file__),
         description='Assemble reads into assembly.'
     )
 

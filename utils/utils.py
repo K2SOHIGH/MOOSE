@@ -80,6 +80,9 @@ def args2dict(args):
     return config
 
 
+def parse_profile_anvio_input(f):
+    pass
+
 def input_from_dir(input , extension):
     if input:
         if os.path.isdir(input):
@@ -103,10 +106,10 @@ def input_from_yaml(input):
     else:
         return None
 
-def input_is_fasta(input):    
+def input_is_fasta(input,extension):    
     if input:
         if os.path.exists(input):
-            n = os.path.basename(input)
+            n = os.path.basename(input).split(extension)[0]
             return {n : os.path.abspath(input)}
 
 
@@ -117,7 +120,7 @@ def parse_input(input , extension):
         elif os.path.isfile(input):
             if input.endswith(".yaml"):
                 return input_from_yaml(input)
-            return input_is_fasta(input)
+            return input_is_fasta(input,extension)
         else:
             return None
     return None

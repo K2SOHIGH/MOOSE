@@ -8,12 +8,14 @@ import yaml
 from utils import utils
 from utils import log
 
-logger = log.setlogger(__name__)
+
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
     
 
 def get_args():
     parser = argparse.ArgumentParser(
-        prog=__name__,
+        prog=os.path.basename(__file__),
         description='Long reads and short reads quality check')
 
     parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")

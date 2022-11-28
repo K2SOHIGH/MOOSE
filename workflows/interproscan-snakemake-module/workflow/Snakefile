@@ -63,10 +63,13 @@ rule interproscan:
         tmp = os.path.join(config["RESDIR"],"tmp","{fasta}","tmp"),
         seqtype = "p" if config["type"] == "proteic" else "n",
         outformat = "TSV" if config["type"] == "proteic" else "GFF3",
+        cmd = lambda wildcards,input : "gunzip -c" if str(input).endswith(".gz") else "cat",
     log:
         os.path.join(config["RESDIR"],"logs","interproscan.{fasta}.log")   
     threads:
         10
     shell:        
-        "{params.interproscanexec} -t {params.seqtype} -i {input} -b {params.prefix} -f {params.outformat} -T {params.tmp} -dp --cpu {threads} >> {log} 2>> {log}"
+        "{params.cmd} {input} | sed 's/\*//g' | {params.interproscanexec} -t {params.seqtype} -i - "
+        "-b {params.prefix} -f {params.outformat} -T {params.tmp} "
+        "-dp --cpu {threads} >> {log} 2>> {log} && touch {output} "
 

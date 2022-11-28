@@ -68,10 +68,10 @@ def parse_mappers():
     f = config["MAPPERS"]
     mappers_dict = {}
     if f is not None:
-        if os.path.exists(f):
+        if os.path.exists(f) and f.endswith(".yaml"):
             mappers_dict = yaml.load(open(f) , Loader=yaml.SafeLoader )
         else:
-            wlogger.error("{} does not exist . Ciao !".format(f))
+            wlogger.error("{} does not exist or is not a yaml file. Ciao !".format(f))
             exit(-1)
     for sid in SAMPLES.samples:
         if sid not in mappers_dict:
@@ -138,21 +138,6 @@ def format_spades_long_reads_inputs(wildcards,input):
         long_reads += "--{} {} ".format(long_reads_type, lr)        
     return long_reads 
 
-# def format_spades_long_reads_inputs(wildcards,input):
-#     long_reads = ""
-#     if len(input.LR) > 1:        
-#         wlogger.error("Multiple longreads files are not supported by SPADES")
-#         exit(-1)
-#     elif len(input.LR) == 1:
-#         if SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "nanopore":
-#             long_reads = "--nanopore {}".format(input.LR)        
-#         elif SAMPLES.get_sample_by_id(wildcards.sample).long_reads_type == "pacbio":
-#             long_reads = "--pacbio {}".format(input.LR)        
-#         else:
-#             return ""
-#     else:
-#         return ""
-#     return long_reads 
 
 def unicycler_get_reads(wildcards , reads , reads_type):    
     if reads:

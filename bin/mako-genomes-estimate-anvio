@@ -7,11 +7,12 @@ import multiprocessing
 from utils import utils
 from utils import log
 
-logger = log.setlogger(__name__)
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
 
 def get_args():
     parser = argparse.ArgumentParser(
-        prog=__name__,
+        prog= os.path.basename(__file__) ,
         description='Use anvi\'o to quickly estimate genomes quality and taxonomy')
 
     parser.add_argument(

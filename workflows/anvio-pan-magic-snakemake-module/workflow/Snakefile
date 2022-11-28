@@ -128,24 +128,14 @@ rule anvio_function_table:
         "anvi-export-functions -c {input.db} -o {output.tmp} && "
         "tail -n +2 {output.tmp} | sed 's/$/\t{wildcards.contig}/g' > {output.txt}"
 
-rule anvio_import_taxo:
-    output:
-        os.path.join(TMPDIR, "{contig}" , "scg.done"),
-    input:
-        ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
-    params:
-        mode = "--metagenome-mode" if config["META"] else "",
-    conda:
-        "envs/anvio-7.1.yaml"
-    shell:
-        "anvi-estimate-scg-taxonomy {params.mode} -c {input} && touch {output}"
 
 rule anvio_scg_taxonomy:
     output:
         os.path.join(TMPDIR , "{contig}" , "anvio.classify.tsv"),
     input:
         ancient(os.path.join(TMPDIR, "{contig}" , "CONTIGS.db")), 
-    params:        
+    params:     
+        mode = "--metagenome-mode" if config["META"] else "",   
         scgdir  = "--scgs-taxonomy-data-dir {}".format(anviodbs) if anviodbs else "",          
     threads:
         10
@@ -153,7 +143,7 @@ rule anvio_scg_taxonomy:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-run-scg-taxonomy {params.scgdir} -c {input} -T {threads} && "
-        "anvi-estimate-scg-taxonomy -c {input} -o {output}"
+        "anvi-estimate-scg-taxonomy {params.mode} -c {input} -o {output}"
 
 rule anvio_pfams:
     output:
@@ -211,7 +201,7 @@ rule anvio_contig_db:
     output:
         os.path.join(TMPDIR, "{contig}", "CONTIGS.db"),
     input:
-        os.path.join(RESDIR, "{contig}", "tmp.fasta"),        
+        os.path.join(TMPDIR, "{contig}", "tmp.fasta"),        
     conda:
         "envs/anvio-7.1.yaml"
     threads:
@@ -223,7 +213,7 @@ rule anvio_contig_db:
 
 rule anvio_contig_reformat:
     output:
-        temp(os.path.join(RESDIR, "{contig}", "tmp.fasta")),
+        temp(os.path.join(TMPDIR, "{contig}", "tmp.fasta")),
     input:
         lambda wildcards : CONTIGS[wildcards.contig],
     conda:

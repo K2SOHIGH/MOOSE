@@ -11,7 +11,9 @@ import multiprocessing
 from utils import utils
 from utils import log
 
-logger = log.setlogger(__name__)
+
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
 
 def find_interpro():
     f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "interproscan.txt" ) )
@@ -25,7 +27,7 @@ def find_interpro():
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog=__name__,
+            prog=os.path.basename(__file__),
             description='Annotate your sequences with interproscan.'
         )
 
@@ -66,7 +68,7 @@ def get_args():
     parser.add_argument(        
         "--type",
         default="proteic",
-        choices=['proteic','nucleic'],
+        choices=['proteic'],#,'nucleic'],
         help= "input sequences type"
     )
         

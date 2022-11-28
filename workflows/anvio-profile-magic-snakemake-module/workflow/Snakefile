@@ -7,9 +7,9 @@ wlogger.info("Grabing configuration and input files")
 
 RESDIR = config["RESDIR"]
 
-CONTIGS = utils.parse_input(config["CONTIGS"], config["extension"])
-
-BAMS = utils.parse_input(config["BAMS"], config["extension"])
+INPUTS = utils.parse_input(config["INPUT"], None)
+CONTIGS = {s:_["fasta"] for s,_ in INPUTS.items()}
+BAMS = {s:_["bams"] for s,_ in INPUTS.items()}
 
 if not CONTIGS or not BAMS:    
     wlogger.error("Can't retrieve your contigs or bams from input file")
@@ -32,7 +32,7 @@ rule anvio:
 def get_profiles(wildcards):    
     if len(BAMS[wildcards.contig]) > 1:        
         return os.path.join(RESDIR, "{contig}", "MERGED_PROFILES", "PROFILE.db" )
-    return expand( os.path.join(RESDIR,wildcards.contig, "PROFILES", "{bam}", "PROFILE.db"),bam = BAMS[wildcards.contig],)
+    return expand( os.path.join(RESDIR,wildcards.contig, "PROFILES", "{bam}", "PROFILE.db"), bam = BAMS[wildcards.contig],)
 
 rule anvio_contigs_workflow:
     output:
@@ -58,13 +58,14 @@ rule anvio_merge_profile:
         db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
     params:
         outdir =  os.path.join(RESDIR, "{contig}", "MERGED_PROFILES"),
+        name = lambda wildcards: wildcards.contig.replace(".","_").replace("-","_")
     threads:
         10
     conda:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-merge "
-        "-S {wildcards.contig} "
+        "-S {params.name} "
         "-c {input.db} "
         "-o {params.outdir} {input.profiles} "
 
@@ -75,12 +76,10 @@ rule anvio_profile:
     input:
         bam = lambda wildcards : BAMS[wildcards.contig][wildcards.bam],
         db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
-        f1 = os.path.join(RESDIR, "{contig}" , "anvio.classify.tsv"),
-        f2 = os.path.join(RESDIR, "{contig}" , "cogs.done"),
-        f3 = os.path.join(RESDIR, "{contig}" , "pfams.done"),
-        f4 = os.path.join(RESDIR, "{contig}" , "keggs.done"),        
+        f = os.path.join(RESDIR , "{contig}" , "anvio-functions.txt"),  
     params:
         outdir = os.path.join(RESDIR, "{contig}" , "PROFILES", "{bam}"),
+        name = lambda wildcards: wildcards.contig.replace(".","_").replace("-","_")
     threads:
         10
     conda:
@@ -91,27 +90,33 @@ rule anvio_profile:
         "-c {input.db} "
         "-T {threads} "
         "--output-dir {params.outdir} "
-        "--sample-name {wildcards.bam} "
+        "--sample-name {params.name} "
         "--cluster-contigs"
 
-rule anvio_import_taxo:
+rule anvio_function_table:
     output:
-        os.path.join(RESDIR, "{contig}" , "scg.done"),
-    input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
-    params:
-        mode = "--metagenome-mode" if config["META"] else "",
+        txt = os.path.join(RESDIR , "{contig}" , "anvio-functions.txt"),
+        tmp = temp(os.path.join(RESDIR , "{contig}" , "anvio-functions.tmp")),
+    input: 
+        db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),             
+        f1 = os.path.join(RESDIR, "{contig}" , "anvio.classify.tsv"),
+        f2 = os.path.join(RESDIR, "{contig}" , "cogs.done"),
+        f3 = os.path.join(RESDIR, "{contig}" , "pfams.done"),
+        f4 = os.path.join(RESDIR, "{contig}" , "keggs.done"),
     conda:
         "envs/anvio-7.1.yaml"
     shell:
-        "anvi-estimate-scg-taxonomy {params.mode} -c {input} && touch {output}"
+        "anvi-export-functions -c {input.db} -o {output.tmp} && "
+        "tail -n +2 {output.tmp} | sed 's/$/\t{wildcards.contig}/g' > {output.txt}"
+
 
 rule anvio_scg_taxonomy:
     output:
         os.path.join(RESDIR , "{contig}" , "anvio.classify.tsv"),
     input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),        
-    params:        
+        ancient(os.path.join(RESDIR, "{contig}" , "CONTIGS.db")), 
+    params:     
+        mode = "--metagenome-mode" if config["META"] else "",   
         scgdir  = "--scgs-taxonomy-data-dir {}".format(anviodbs) if anviodbs else "",          
     threads:
         10
@@ -119,13 +124,13 @@ rule anvio_scg_taxonomy:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-run-scg-taxonomy {params.scgdir} -c {input} -T {threads} && "
-        "anvi-estimate-scg-taxonomy -c {input} -o {output}"
+        "anvi-estimate-scg-taxonomy {params.mode} -c {input} -o {output} --just-do-it "
 
 rule anvio_pfams:
     output:
         os.path.join(RESDIR, "{contig}" , "pfams.done"),
     input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"), 
+        ancient(os.path.join(RESDIR, "{contig}" , "CONTIGS.db")), 
     threads:
         10
     params:
@@ -134,15 +139,15 @@ rule anvio_pfams:
         "envs/anvio-7.1.yaml"
     shell:
         "anvi-run-pfams {params.anviodbs} "
-        "-c {input} --num-threads {threads} "
-        "--just-do-it && touch {output} "
+        "-c {input} --num-threads {threads} && "
+        "touch {output} "
 
 
 rule anvio_keggs:
     output:
-        os.path.join(RESDIR, "{contig}" , "kegg.done"),
+        os.path.join(RESDIR, "{contig}" , "keggs.done"),
     input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"), 
+        ancient(os.path.join(RESDIR, "{contig}" , "CONTIGS.db")), 
     threads:
         10
     params:
@@ -154,11 +159,12 @@ rule anvio_keggs:
         "-c {input} --num-threads {threads} "
         "--just-do-it && touch {output} "
 
+
 rule anvio_cogs:
     output:
         os.path.join(RESDIR, "{contig}" , "cogs.done"),
     input:
-        os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),        
+        ancient(os.path.join(RESDIR, "{contig}" , "CONTIGS.db")),     
     threads:
         10
     params:
@@ -166,13 +172,15 @@ rule anvio_cogs:
     conda:
         "envs/anvio-7.1.yaml"
     shell:
-        "anvi-run-ncbi-cogs {params.anviodbs) -c {input} --num-threads {threads} && "
+        "anvi-run-ncbi-cogs {params.anviodbs} "
+        "-c {input} "
+        "--num-threads {threads} && "
         "touch {output} "
 
 
 rule anvio_contig_db:
     output:
-        os.path.join(TMPDIR, "{contig}", "CONTIGS.db"),
+        os.path.join(RESDIR, "{contig}", "CONTIGS.db"),
     input:
         os.path.join(RESDIR, "{contig}", "tmp.fasta"),        
     conda:
@@ -189,10 +197,19 @@ rule anvio_contig_reformat:
         temp(os.path.join(RESDIR, "{contig}", "tmp.fasta")),
     input:
         lambda wildcards : CONTIGS[wildcards.contig],
+    params:
+        reformat = "false"
     conda:
         "envs/anvio-7.1.yaml"
     threads:
         10
-    shell:
-        "anvi-script-reformat-fasta  -o {output} --simplify-names {input}"
+    shell:"""
+        if {params.reformat}; then
+            anvi-script-reformat-fasta  -o {output} --simplify-names {input} ;
+        elif [[ {input} == *.gz ]] ; then 
+            gunzip -c {input} > {output}; 
+        else 
+            cat {input} > {output};
+        fi
+        """
         

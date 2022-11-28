@@ -1,5 +1,3 @@
-#include: "../../share/fun.smk"
-
 from utils import log
 from utils import utils
 from utils import sample

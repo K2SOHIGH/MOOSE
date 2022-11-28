@@ -1,4 +1,4 @@
-include: "../../share/fun.smk"
+include: "rules/fun.smk"
 
 from utils import sample
 from utils import utils
@@ -27,7 +27,6 @@ products = {
 
 
 SAMPLES = sample.Samples(config["INPUT"])
-#SAMPLES_W_LR = get_sample_with_long_reads()
 
 wlogger.info("Grabing configuration and input files =°")
 
@@ -57,6 +56,8 @@ SAMPLES.samples.update(
 MAPPERS = parse_mappers()
 
 READS = SAMPLES.sample2reads()    
+
+
 if not READS:
     wlogger.error("Can't retrieve your reads :(")
     exit(-1)    
@@ -72,6 +73,7 @@ rule assembly:
         os.path.join(RESDIR  ,"assembly_report.html"),  
         os.path.join(RESDIR  ,"assembly.yaml"),         
         os.path.join(RESDIR  ,"bams.yaml"),         
+        os.path.join(RESDIR  ,"profiles.yaml"),      
     input:
         contigs = expand(
             os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml"),
@@ -79,6 +81,10 @@ rule assembly:
         ),
         bams = expand(
             os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml"),
+            sample = SAMPLES.samples,
+        ),
+        profiles = expand(
+            os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "profile.yaml"),
             sample = SAMPLES.samples,
         ),
         stats = os.path.join(RESDIR, SAMPLES_DIR, "assembly.stats.tsv"),
@@ -91,7 +97,26 @@ rule assembly:
     shell:
         "cat {input.contigs} > {output[1]} ; "
         "cat {input.bams} > {output[2]} ; "  
+        "cat {input.profiles} > {output[3]} ; " 
         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} -f "
+
+
+rule assembly_make_anvio_profile_file:
+    output:
+        temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "profile.yaml")),
+    input:
+        bams = os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "bamsfile.yaml"),
+        contigs = os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml"),
+    run:
+        contigs = yaml.load(open(str(input.contigs)), Loader = yaml.SafeLoader)
+        bams = yaml.load(open(str(input.bams)), Loader = yaml.SafeLoader)
+        profiles_dict = {}
+        for sample_id, sample_assembly in contigs.items():
+            if sample_id not in profiles_dict:
+                profiles_dict[sample_id] = {"fasta":sample_assembly,"bams":bams[sample_id] }
+        yaml.dump( profiles_dict ,  open(str(output) , 'w' ) ),
+
+
 
 rule assembly_make_anvio_bams_file:
     output:
@@ -101,9 +126,28 @@ rule assembly_make_anvio_bams_file:
     run:
         bams_dict = {}
         for fi in input:
+            strategy, assembler, _ = os.path.dirname(fi).split("/")[-3:]
+            a_id = "_".join([wildcards.sample , strategy, assembler ])
+            if a_id not in bams_dict:
+                bams_dict[a_id] = {}
             b_id = os.path.basename(fi).replace(".sorted.bam","")
-            bams_dict[b_id] = os.path.abspath(fi)
-        yaml.dump( { wildcards.sample : bams_dict  } ,  open(str(output) , 'w' ) ),
+            b_id = "_" .join([b_id,strategy,assembler])
+            bams_dict[a_id][b_id] = os.path.abspath(fi)
+        yaml.dump( bams_dict ,  open(str(output) , 'w' ) ),
+
+
+rule assembly_make_anvio_contigs_file:
+    output:
+        temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml")),
+    input:
+        get_assembly_products,            
+    run:
+        assembly_dict = {}
+        for fi in input:
+            strategy, assembler = os.path.dirname(fi).split("/")[-2:]
+            a_id = "_".join([wildcards.sample , strategy, assembler ])
+            assembly_dict[a_id] = os.path.abspath(fi)
+        yaml.dump( assembly_dict ,  open(str(output) , 'w' ) ),
 
 
 rule assemby_stats:
@@ -118,37 +162,6 @@ rule assemby_stats:
     shell:
         "head -n 1 {input[0]} > {output} && tail -q -n +2 {input} > {output}"
 
-
-
-rule assembly_make_anvio_contigs_file:
-    output:
-        temp(os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "contigsfile.yaml")),
-    input:
-        get_assembly_products,            
-    run:
-        assembly_dict = {}
-        for fi in input:
-            a_id = "_".join(os.path.dirname(fi).split("/")[-2:])
-            assembly_dict[a_id] = os.path.abspath(fi)
-        yaml.dump( { wildcards.sample : assembly_dict  } ,  open(str(output) , 'w' ) ),
-
-# rule assembly_sample_report:
-#     output:
-#         os.path.join(RESDIR , SAMPLES_DIR , "{sample}" ,"assembly_report.html"),
-#     input:          
-#         expand(
-#             os.path.join(RESDIR, SAMPLES_DIR, "{{sample}}" , "{qc_contigs}-contigs-qc", "report.html"),
-#             qc_contigs = ["raw","filtered"]
-#         ),
-#         os.path.join(RESDIR , SAMPLES_DIR , "{sample}", "mapping.done"),
-#     conda:
-#         "envs/multiqc.1.13.yaml"     
-#     params:
-#         multiqc_target = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
-#         outdir = os.path.join(RESDIR , SAMPLES_DIR , "{sample}"),
-#         name = "assembly_report.html",
-#     shell:
-#         "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} -f "
 
 rule assembly_filtering:
     """

@@ -8,11 +8,13 @@ import yaml
 from utils import utils
 from utils import log
 
-logger = log.setlogger(__name__)
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
+
     
 def get_args():
     parser = argparse.ArgumentParser(
-        prog=__name__,
+        prog= os.path.basename(__file__) ,
         description='Setup anvi\'o databases.')
 
     parser.add_argument('-d','--dir-anvio', 
@@ -23,8 +25,7 @@ def get_args():
     parser.add_argument('-r','--reset', 
         default=None,  
         action="store_true",
-        help = "reset anvi'o databases.")
-             
+        help = "reset anvi'o databases.")  
 
     parser.add_argument(
         '-t',
