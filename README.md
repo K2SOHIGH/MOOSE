@@ -1,29 +1,6 @@
 # MAKOS
 MetAgenomics worKflOws 
 
-**TO DO**
-
-- mako-contigs-anvi-magic-mtg (use fna as input and perform profiling + annotations using pfam / kegg and cogg ~ metagenomics workflow)
-	- anvi-gen-contigs-database
-	- anvi-run-kegg-kofams
-	- anvi-run-ncbi-cogs
-	- anvi-run-pfam
-	- anvi-run-hmms
-	- anvi-run-taxonomy
-	- anvi-profile
-	- anvi-merge
-- mako-contigs-anvi-magic-pan (use fna as input and perform pangenomics analysis)
-	- anvi-gen-contigs-database
-	- anvi-run-kegg-kofams
-	- anvi-run-ncbi-cogs
-	- anvi-run-pfam
-	- anvi-run-hmms
-	- anvi-gen-genomes-storage (combining all data from all genomes)
-	- anvi-pan-genome (compare all genes to build genes clusters)
-	- anvi-display-pan
-
-
-
 <p align="center">
   <img src="mako.png">
 </p>
@@ -31,34 +8,76 @@ MetAgenomics worKflOws
 MAKOS is basically a bunch of wrapper/tools to process one or more samples/genomes through classical workflows in (meta)genomics such as megahit, SPADES, CheckM, GTDB-TK, Prodigal, etc...
 Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.io/en/stable/) and can be easily deployed on a cluster.
 
-# Current features
+# summary
+
+- [setup](#setup)
+	- [mako-setup-anvio-databases](#mako-setup-anvio-databases) :white_check_mark:
+	- [mako-setup-interproscan](#mako-setup-interproscan) :white_check_mark:
 
 - [reads-based-features](#reads-based-features)
-	- [makos-reads-qc](#makos-reads-qc)
-	- [makos-reads-assembly](#makos-reads-assembly)
+	- [mako-reads-qc](#mako-reads-qc) :white_check_mark:
+	- [mako-reads-assembly](#mako-reads-assembly) :warning:
+		- SRO :white_check_mark:
+		- SRF :warning:
+		- SRL :warning:
+		
 - [genomes-based-features](#genomes-based-features)
-	- [makos-genomes-genecall-prodigal](#makos-genomes-genecall-prodigal)
-	- [makos-genomes-estimate-anvio](#makos-genomes-estimate-anvio)
-	- [makos-genomes-classify-checkm](#makos-genomes-classify-checkm)
-	- [makos-genomes-estimate-anvio](#makos-genomes-estimate-anvio)
+	- [mako-genomes-genecall-prodigal](#mako-genomes-genecall-prodigal) :white_check_mark:
+	- [mako-genomes-quality-checkm](#mako-genomes-quality-checkm) :warning:
+	- [mako-genomes-classify-gtdbtk](#mako-genomes-classify-gtdbtk) :warning:	
+	- [mako-genomes-estimate-anvio](#mako-genomes-estimate-anvio) :white_check_mark:
+	- [mako-genomes-pan-anvio](#mako-genomes-pan-anvio) :white_check_mark:
+	- [mako-genomes-profile-anvio](#mako-genomes-profile-anvio) :white_check_mark:
+	
+- [cds-based-features](#cds-based-features)
+	- [mako-cds-classify-interproscan](#mako-cds-classify-interproscan) :white_check_mark:
+	
+
+## setup         [:arrow_up:](#summary)
+
+### mako-setup-interproscan
+
+Download interproscan databases and executable. Make them available for [mako-cds-classify-interproscan](#mako-cds-classify-interproscan) command.
 
 
-## reads-based-features
+```
+mako-setup-interproscan -d INTERPROSCAN_SETUP
+```
 
-### makos-reads-qc
+### mako-setup-anvio-databases
+
+Download anvio pfam,ncbi cog, kegg and scg databases. Make them available for anvio-dependant workflows.
+
+
+```
+ mako-setup-anvio-databases -d ANVIO_DBDIR --reset 
+```
+
+## cds-based-features      [:arrow_up:](#summary)
+
+### mako-cds-classify-interproscan
+
+Analyze CDS fasta file(s) in proteic format with interproscan and output an unique table.
+
+```mako-cds-classify-interproscan -i /CDS/DIR -e .fasta.gz -o INTERPROSCAN-CLASSIFY -t 15```
+
+
+## reads-based-features     [:arrow_up:](#summary)
+
+### mako-reads-qc
 
 Check your reads quality using fastqc for short reads and nanoplot for long ones. Summarize all your samples reads quality in a single report using multiqc.
 
-makos-make-sample-file might be used to produce the input file.
+mako-make-sample-file might be used to produce the input file.
 
 Exemple usage :
 
 ```
-makos-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
-makos-reads-qc -i samples.yaml -o READSQC 
+mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
+mako-reads-qc -i samples.yaml -o READSQC 
 ```
 
-### makos-reads-assembly
+### mako-reads-assembly
 
 **WARNING : SRF and LRF not tested yet.**
 
@@ -72,36 +91,29 @@ Map your reads against your assembly for coverage estimation using bowtie2 and s
 Estimate assembly quality using seqfu and Quast.
 Summarize all your samples' assembly quality in a single report using multiqc.
 
-Again, makos-make-sample-file might be used to produce the input file.
+Again, mako-make-sample-file might be used to produce the input file.
 
 Exemple usage :
 
 ```
-makos-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
-makos-reads-assembly -i samples.yaml -o ASSEMBLY --workflow SRO SRF  
+mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
+mako-reads-assembly -i samples.yaml -o ASSEMBLY --workflow SRO SRF  
 ```
 
-## genomes-based-features
+## genomes-based-features     [:arrow_up:](#summary)
 
-### makos-genomes-genecall-prodigal
+### mako-genomes-genecall-prodigal
 Predict genes in your input genome(s) using Prodigal
 
 Exemple usage :
 
 ```
-makos-genomes-genecall-prodigal -i <dir_with_fna> -e .fna.gz -o GENECALL
+mako-genomes-genecall-prodigal -i <dir_with_fna> -e .fna.gz -o GENECALL
 ```
 
-### makos-genomes-estimate-anvio
-Estimate your input genome(s) taxonomy and quality using anvi'o.
 
-Exemple usage :
 
-```
-makos-genomes-estimate-anvio -i <dir_with_*.fna.gz_files> -e .fna.gz -o ANVIO-ESTIMATE
-```
-
-### makos-genomes-classify-gtdbtk
+### mako-genomes-classify-gtdbtk
 **WARNING : waiting an access to my cluster to test it.**
 
 Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
@@ -109,9 +121,9 @@ Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
 Exemple usage :
 
 ```
-makos-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
+mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
 ```
-### makos-genomes-quality-checkm
+### mako-genomes-quality-checkm
 **WARNING : waiting an access to my cluster to test it.**
 
 Estimate completness and redundancy of your input genome(s) using CheckM.
@@ -121,38 +133,29 @@ Exemple usage :
 makos-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
 ```
 
-## contigs-based-features
+### mako-genomes-estimate-anvio
+Estimate your input genome(s) taxonomy and quality using anvi'o.
 
-### mako-contigs-anvio-magic
-
-Profile your contigs with BAM files using anvi-profile 
-
-```
-makos-genomes-quality-checkm -i <dir_with_*.fna.gz_files> -e .fna.gz -o QUALITY
-```
-
-## cds-based-features
-
-### makos-setup-interproscan
-
-Download interproscan databases and executable to a specific location.
+Exemple usage :
 
 ```
-makos-setup-interproscan -d path/to/interproscan/directory
+mako-genomes-estimate-anvio -i <dir_with_*.fna.gz_files> -e .fna.gz -o ANVIO-ESTIMATE
 ```
 
-### makos-cds-classify-interproscan
+### mako-genomes-profile-anvio
 
-Annotate cds in proteic or nucleic format from one or more fasta file using interproscan databases and output a single table.
+Annotate and profile one or more genomes with anvio-databases and bam(s) file(s) using anvio.
+
+Exemple usage :
 
 ```
-makos-cds-classify-interproscan -i <dir_with_*.fasta> --type proteic -e .fasta -o. INTERPRO-CLASSIFY --threads 15
+mako-genomes-profile-anvio -i samples.yaml -o ANVIO-PROFILES
 ```
 
+### mako-genomes-pan-anvio
+Annotate and Perform pangenomics analysis on a set of genomes using anvio.
+Exemple usage :
 
-
-
-
-
-
--
+```
+mako-genomes-pan-anvio -i <dir_with_*.fna.gz_files> -e .fna.gz -o ANVIO-PANGENOMICS
+```
