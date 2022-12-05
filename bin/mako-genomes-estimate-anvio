@@ -58,8 +58,7 @@ def main():
     args.dbfile = f
 
     utils.module(
-            "anvio-estimate-module",
-            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
+            "anvio-estimate-module",            
             args
         )
 

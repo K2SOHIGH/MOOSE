@@ -4,7 +4,9 @@ import os
 import re
 import tempfile
 import shutil
+import random
 import glob
+from datetime import date
 import yaml
 import logging
 try:
@@ -44,22 +46,28 @@ def get_anvio_db_path():
         #exit(-1)
         
 
-def module(module,cprefix,args):
+def module(module,args):
+    userdir = os.path.expanduser( '~' )
+    condastorage = os.path.join(userdir,"condaenvs")
+    configstorage = os.path.join(userdir,"configfiles")
+    os.makedirs(condastorage,exist_ok=True)
+    os.makedirs(configstorage,exist_ok=True)
     logger.info("Running %s !" % module)    
-    logger.info("Snakemake will install conda environment in %s" % cprefix)
-    
-    configfile = tempfile.NamedTemporaryFile(mode="w+")  
+    logger.info("Snakemake will install conda environment in %s" % condastorage)    
+    configfile = os.path.join(configstorage,"config-{}.{}.{}.yaml".format(module,date.today(), random.randint(0,1000000) ))
+    logger.info("Configuration file : %s" % configfile)    
+    #configfile = tempfile.NamedTemporaryFile(mode="w+")  
     CONFIG = args2dict(args)    
-    yaml.dump( CONFIG, configfile )    
-    configfile.flush()
+    yaml.dump( CONFIG, open(configfile,"w") )    
+    #configfile.flush()
     SNAKEFILE =  get_snakefile(os.path.join(os.path.dirname(__file__),".."),module)
     cmd = """
         snakemake --snakefile  {snakefile} -j{threads} --rerun-triggers mtime --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
     """.format(
         snakefile = SNAKEFILE ,
         threads = args.threads,
-        cp = cprefix,
-        config = configfile.name,
+        cp = condastorage,
+        config = configfile,
         snakargs = args.snakargs
     )
 
@@ -89,7 +97,7 @@ def input_from_dir(input , extension):
             #IDS, = glob_wildcards(input + "/{id}." + extension)
             IDS = glob.glob(input + "/*" + extension)
             return {
-                os.path.basename(i).split(extension)[0] : i for i in IDS
+                os.path.basename(i).split(extension)[0] : os.path.abspath(i) for i in IDS
                 }
 
 def input_from_yaml(input):
