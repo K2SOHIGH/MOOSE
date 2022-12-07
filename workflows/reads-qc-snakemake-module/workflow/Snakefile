@@ -1,7 +1,7 @@
 from utils import log
 from utils import utils
 from utils import sample
-
+import yaml
 
 wlogger = log.setlogger(__name__)
 
@@ -11,9 +11,11 @@ wlogger = log.setlogger(__name__)
 RESDIR = config["output_dir"]
 SAMPLES_DIR = "SAMPLES"
 
+# yaml.dump(config,open(RESDIR+"/config.yaml",'w'))
+
+# configfile: RESDIR+"/config.yaml"
 
 SAMPLES = sample.Samples(config["input"])
-#SAMPLES_W_LR = get_sample_with_long_reads()
 
 """
     SETUP
@@ -55,13 +57,16 @@ rule reads_qc_multiqc:
         SRQC = lambda wildcards: os.path.join( RESDIR , SAMPLES_DIR, "{sample}" , "qc-reads" , "fastqc" ) if SAMPLES.get_sample_by_id(wildcards.sample).forward or SAMPLES.get_sample_by_id(wildcards.sample).single else [],
     conda:
         "envs/multiqc.1.13.yaml"
+    log:
+        os.path.join(RESDIR , SAMPLES_DIR, "{sample}","multiqc.log"),
     params:
         multiqc_target = os.path.join(RESDIR,  SAMPLES_DIR , "{sample}" , "qc-reads"),
         outdir = os.path.join(RESDIR , SAMPLES_DIR, "{sample}" , "qc-reads"),
         name = "multiqc_qc_reads_report.html",
     shell:
-        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name}"
- 
+        "multiqc {params.multiqc_target} -d -dd 3 -o {params.outdir} -n {params.name} > {log}"
+
+
 rule reads_qc_nanoplot:
     output:
         directory( os.path.join( RESDIR , SAMPLES_DIR, "{sample}" , "qc-reads" , "nanoplot" ) ),
@@ -71,10 +76,12 @@ rule reads_qc_nanoplot:
         outdir = os.path.join( RESDIR , SAMPLES_DIR, "{sample}" ,  "qc-reads" , "nanoplot" ),
     conda:
         "envs/nanoplot.1.40.yaml"
+    log:
+        os.path.join(RESDIR , SAMPLES_DIR, "{sample}","nanoplot.error.log"),
     threads: 
         10
     shell:
-        "NanoPlot --fastq {input} --loglength -o {params.outdir}  -t {threads}"
+        "NanoPlot --fastq {input} -o {params.outdir}  -t {threads} 2> {log}"
 
 
 rule reads_qc_fastqc:
@@ -86,11 +93,15 @@ rule reads_qc_fastqc:
         lambda wildcards : SAMPLES.get_sample_by_id(wildcards.sample).single,
     params:
         outdir = os.path.join(RESDIR , SAMPLES_DIR, "{sample}" ,  "qc-reads" , "fastqc" ),
+    log:
+        os.path.join(RESDIR , SAMPLES_DIR, "{sample}","fastqc.error.log"),
     conda:
         "envs/fastqc.0.11.9.yaml"
+    resources:
+        tmpdir = RESDIR + "/snaketmp"
     threads: 
         10
     shell:
-        "mkdir -p {output} && fastqc {input} -o {params.outdir} -t {threads}"
+        "mkdir -p {output} && fastqc {input} -o {params.outdir} -t {threads} 2> {log}"
 
 
