@@ -2,7 +2,6 @@
 
 rule reads_processing_long_reads:
     output:
-        # temp(os.path.join(RESDIR , "qc_reads" , "long_reads" , "{rid}_long_qc_reads.fastq.gz")),        
         temp(
             os.path.join(
                 RESDIR, SAMPLES_DIR , "{sample}", "qc_reads", "long_{lr}.fq.gz"

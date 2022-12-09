@@ -1,12 +1,7 @@
-name: bamutils
+name: pysam
 channels:
+  - conda-forge
+  - bioconda
   - defaults
 dependencies:
-  - python=3
-  - pandas
-  - pysam=0.15
-  - pysamstats
-  - gffutils
-  - biopython
-  - matplotlib
-  - tqdm
+  - pysam=0.19.1

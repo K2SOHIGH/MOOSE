@@ -47,9 +47,12 @@ def get_anvio_db_path():
         
 
 def module(module,args):
-    userdir = os.path.expanduser( '~' )
-    condastorage = os.path.join(userdir,"condaenvs")
-    configstorage = os.path.join(userdir,"configfiles")
+    configdir = os.path.expanduser( '~' )
+    configdir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__),".." )
+        )        
+    condastorage = os.path.join(configdir,"condaenvs")
+    configstorage = os.path.join(configdir,"configfiles")
     os.makedirs(condastorage,exist_ok=True)
     os.makedirs(configstorage,exist_ok=True)
     logger.info("Running %s !" % module)    
