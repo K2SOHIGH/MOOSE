@@ -18,13 +18,13 @@ Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.i
 	- [mako-reads-qc](#mako-reads-qc) :white_check_mark:
 	- [mako-reads-assembly](#mako-reads-assembly) :warning:
 		- SRO :white_check_mark:
-		- SRF :warning:
+		- SRF :white_check_mark:
 		- SRL :warning:
 		
 - [genomes-based-features](#genomes-based-features)
 	- [mako-genomes-genecall-prodigal](#mako-genomes-genecall-prodigal) :white_check_mark:
-	- [mako-genomes-quality-checkm](#mako-genomes-quality-checkm) :warning:
-	- [mako-genomes-classify-gtdbtk](#mako-genomes-classify-gtdbtk) :warning:	
+	- [mako-genomes-quality-checkm](#mako-genomes-quality-checkm) :white_check_mark:
+	- [mako-genomes-classify-gtdbtk](#mako-genomes-classify-gtdbtk) :white_check_mark:
 	- [mako-genomes-estimate-anvio](#mako-genomes-estimate-anvio) :white_check_mark:
 	- [mako-genomes-pan-anvio](#mako-genomes-pan-anvio) :white_check_mark:
 	- [mako-genomes-profile-anvio](#mako-genomes-profile-anvio) :white_check_mark:
@@ -114,7 +114,6 @@ mako-genomes-genecall-prodigal -i <dir_with_fna> -e .fna.gz -o GENECALL
 
 
 ### mako-genomes-classify-gtdbtk
-**WARNING : waiting an access to my cluster to test it.**
 
 Classify your input genome(s) using GTDB-TK V2 and GTDB release 207.
 
@@ -124,7 +123,6 @@ Exemple usage :
 mako-genomes-classify-gtdb-tk -i <dir_with_*.fna.gz_files> -e .fna.gz -o GTDBTK-CLASSIF
 ```
 ### mako-genomes-quality-checkm
-**WARNING : waiting an access to my cluster to test it.**
 
 Estimate completness and redundancy of your input genome(s) using CheckM.
 Exemple usage :
