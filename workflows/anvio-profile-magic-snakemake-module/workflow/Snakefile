@@ -3,12 +3,13 @@ from utils import log
 
 wlogger = log.setlogger(__name__)
     
-wlogger.info("Grabing configuration and input files")
+
+#SETUP
 
 RESDIR = config["RESDIR"]
-
 INPUTS = utils.parse_input(config["INPUT"], None)
 CONTIGS = {s:_["fasta"] for s,_ in INPUTS.items()}
+MINCONTIGLEN = config["CONTIGSLEN"]
 BAMS = {s:_["bams"] for s,_ in INPUTS.items()}
 
 if not CONTIGS or not BAMS:    
@@ -78,6 +79,7 @@ rule anvio_profile:
         bam = lambda wildcards : BAMS[wildcards.contig][wildcards.bam],
         db = os.path.join(RESDIR, "{contig}" , "CONTIGS.db"),
         f = os.path.join(RESDIR , "{contig}" , "anvio-functions.txt"),  
+        coi = os.path.join(RESDIR, "{contig}", "contigs_of_interest.txt"),
     params:
         outdir = os.path.join(RESDIR, "{contig}" , "PROFILES", "{bam}"),
         name = lambda wildcards: wildcards.bam.replace(".","_").replace("-","_")
@@ -92,6 +94,7 @@ rule anvio_profile:
         "-T {threads} "
         "--output-dir {params.outdir} "
         "--sample-name {params.name} "
+        "--contigs-of-interest {input.coi} "
         "--cluster-contigs"
 
 rule anvio_function_table:
@@ -192,6 +195,13 @@ rule anvio_contig_db:
         "anvi-gen-contigs-database -T {threads} -f {input} -o {output} -n '{wildcards.contig}' && "
         "anvi-run-hmms -c {output} -T {threads} --just-do-it "
 
+rule anvio_contig_of_interest:
+    output:
+        temp(os.path.join(RESDIR, "{contig}", "contigs_of_interest.txt")),
+    input:
+        os.path.join(RESDIR, "{contig}", "tmp.fasta"),
+    shell:
+        "grep '>' {input} | sed 's/>//g' > {output}"
 
 rule anvio_contig_reformat:
     output:
@@ -199,18 +209,22 @@ rule anvio_contig_reformat:
     input:
         lambda wildcards : CONTIGS[wildcards.contig],
     params:
-        reformat = "false"
+        reformat = "false",
+        minlen = MINCONTIGLEN,
     conda:
         "envs/anvio-7.1.yaml"
     threads:
         10
     shell:"""
         if {params.reformat}; then
-            anvi-script-reformat-fasta  -o {output} --simplify-names {input} ;
-        elif [[ {input} == *.gz ]] ; then 
-            gunzip -c {input} > {output}; 
-        else 
-            cat {input} > {output};
+            anvi-script-reformat-fasta  -o {output} -l {params.minlen} --simplify-names {input} -;
+        else
+            anvi-script-reformat-fasta  -o {output} -l {params.minlen} {input} -; 
         fi
         """
+        #       elif [[ {input} == *.gz ]] ; then 
+        #     gunzip -c {input} > {output}; 
+        # else
+        #     cat {input} > {output};
+        # fi
         

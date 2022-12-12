@@ -22,7 +22,7 @@ def get_args():
 
     parser.add_argument('-e', "--extension", default=".fasta" ,  type=str , help = "input files extension.")
     
-    #parser.add_argument('-b', "--bams" , dest="BAMS" , required=True, default=None ,  type=str , help = "BAMs input YAML file, see README.md for format.")
+    parser.add_argument('-l', "--len" , dest="CONTIGSLEN" , default=2500 ,  type=int , help = "Minimal contig length.")
 
     parser.add_argument('-o', '--output-dir' , dest="RESDIR" , default = "." , type=str)
 
