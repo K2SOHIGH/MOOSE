@@ -46,10 +46,8 @@ def main():
     args = get_args()
     f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "anviodb.txt" )  )
     args.file = f
-
     utils.module(
         "anvio-setup-databases",
-        os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
         args
     )
 

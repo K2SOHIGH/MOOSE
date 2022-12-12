@@ -87,6 +87,10 @@ rule assembly:
             os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "profile.yaml"),
             sample = SAMPLES.samples,
         ),
+        quasts = expand(
+            os.path.join(RESDIR, SAMPLES_DIR, "{sample}" , "{qc_contigs}-contigs-qc", "report.html"),
+            sample = SAMPLES.samples, qc_contigs = ["raw","filtered"],
+        ), 
         stats = os.path.join(RESDIR, SAMPLES_DIR, "assembly.stats.tsv"),
     conda:
         "envs/multiqc.1.13.yaml"     

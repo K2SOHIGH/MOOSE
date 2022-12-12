@@ -82,6 +82,7 @@ def module(module,args):
         logger.error("Hum ... something went wrong while executing the workflow ... :( ")
         exit(-1)
     logger.info("Great , %s finished without error :)" % module)   
+    os.remove(configfile)
     return excode 
         
 def args2dict(args):

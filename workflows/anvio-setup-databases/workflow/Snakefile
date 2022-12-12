@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+localrules: anvio_setup_keggs, anvio_setup_pfams, anvio_setup_scg, anvio_setup_cogs
 configfile: "config/config.yaml"
 
 import os
