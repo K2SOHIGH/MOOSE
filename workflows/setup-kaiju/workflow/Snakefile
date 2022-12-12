@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+configfile: "config/config.yaml"
+
+import os
+import pandas as pd
+import yaml
+import logging
+import shutil
+from utils import utils
+from utils import log
+
+
+wlogger = log.setlogger(__name__)
+ 
+dbfile = config["dbfile"]
+# os.path.abspath(
+#     os.path.join(
+#         os.path.dirname(__file__), ".." , "resources" , "kaiju.json"
+#     )
+# )
+RESDIR = os.path.dirname(dbfile)
+
+TARGETDB = config["db"]
+DBDIR = config["dir"]
+
+if os.path.exists(dbfile):
+    KAIJUDBS = json.load(open(dbfile))    
+    if TARGETDB in KAIJUDBS:
+        if os.path.isdir(KAIJUDBS[TARGETDB]["directory"]):
+            if config["force"]:
+                shutil.rmtree(KAIJUDBS[TARGETDB]["directory"])
+                os.path.remove(dbfile)
+
+            wlogger.warning("Kaiju {} database \
+                have already been downloaded. If you want to re-download it use --force".format(config["DB"]))
+            exit(0)
+        else:
+            wlogger.warning("Kaiju {} database \
+                have already been downloaded but is not present at {}".format(config["DB"], KAIJUDBS[TARGETDB]["directory"] ))
+            exit(-1)
+else:
+    wlogger.info("Kaiju {} database will be download ! ".format(TARGETDB.upper() ))
+
+    
+rule setup_kaiju_database_file:
+    output:
+        os.path.join(RESDIR,TARGETDB+".done")
+    input:
+        os.path.join(
+            RESDIR, TARGETDB+".kaiju.done"
+        )
+    params:
+        dbdir = DBDIR,    # where the new DB will be store.
+        db = TARGETDB,    # the request database.
+        dbfile = dbfile,  # json file where db details are stored.
+    run:        
+        import json
+        import glob
+        if os.path.exists(params.dbfile):
+            dbconfigs = json.load(open(str(params.dbfile)))
+        else:
+            dbconfigs = {}
+        
+        basedir = os.path.join(str(params.dbdir),db)
+        fmi = os.path.abspath(glob.glob(basedir+"/*.fmi"))
+        nodes = os.path.abspath(os.path.join(str(params.dbdir),"nodes.dmp"))
+        names = os.path.abspath(os.path.join(str(params.dbdir),"names.dmp"))
+        if not os.path.exists(fmi):
+            wlogger.error("{} not found.".format(fmi))
+            exit(-1)          
+        if not os.path.exists(nodes):
+            wlogger.error("{} not found.".format(nodes))
+            exit(-1)
+        if not os.path.exists(names):
+            wlogger.error("{} not found.".format(names))
+            exit(-1)            
+        files = { params.db:{
+                    "fmi": fmi,
+                    "nodes" : nodes,
+                    "names" : names,
+                }
+            }
+        dbconfigs.update(files)
+        json.dump(dbconfigs,open(str(params.dbfile),'w'))
+        open(str(output),'w').close()
+
+rule setup_kaiju_database:
+    output:
+        temp(
+            os.path.join(
+                RESDIR, TARGETDB+".kaiju.done"
+            )
+        )
+    params:
+        dbdir = DBDIR,
+        DB = TARGETDB,
+    threads:
+        10
+    conda:
+        "envs/kaiju.1.9.0.yaml"
+    shell:
+        """
+            mkdir -p {params.dbdir} &&
+            cd {params.dbdir} &&
+            kaiju-makedb -s {params.DB} -t {threads} &&
+            touch {output} ;
+            cd - ;
+        """
