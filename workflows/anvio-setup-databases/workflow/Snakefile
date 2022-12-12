@@ -13,22 +13,23 @@ from utils import log
 
 
 wlogger = log.setlogger(__name__)
-
+config["reset"] = False
 dbfile = config["file"]
 RESDIR = os.path.dirname(dbfile)
 dbdir = config["dir_anvio"]
 
-
-if os.path.exists(dbfile) and config["force"]:
-    os.remove(dbfile)
-    config["reset"] = True
-else:
-    wlogger.warning("Databases have already been downloaded. If you want to re-download them use --force")
-    exit(0)
+onstart:
+    if os.path.exists(dbfile) and config["force"]:
+        os.remove(dbfile)
+        print("here")
+        config["reset"] = True
+    else:
+        wlogger.warning("Databases have already been downloaded. If you want to re-download them use --force")
+        exit(-1)
 
 rule anvio_setup_target:
     output:
-        dbfile,
+        dbfile
     input:
         expand(
             os.path.join(RESDIR, "anvio-{db}-setup.done"), db = ["scg","cogs","keggs","pfams"]

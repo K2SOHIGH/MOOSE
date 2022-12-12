@@ -29,9 +29,10 @@ def get_snakefile(dir, keyword):
 
 def get_anvio_db_path():
     f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "anviodb.txt" )  )
-    logger.info("check if {} exists ...".format(f))
+    print(f)
     if os.path.exists(f):
         db = ""
+        logger.info("check if {} exists ...".format(f))
         with open(f) as s:
             for line in s.readlines():
                 db = line.strip()
