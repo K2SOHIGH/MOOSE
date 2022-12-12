@@ -36,14 +36,13 @@ def get_anvio_db_path():
             for line in s.readlines():
                 db = line.strip()
         if os.path.isdir(db):
-            logger.info("SCG_TAXONOMY db found here : {} ".format(db))
-            return "--scgs-taxonomy-data-dir {}".format(db)
+            logger.info("Anvio databases found here : {} ".format(db))
+            return os.path.abspath(db)
         else:
             return ""                
-    else:
-        return ""        
-        #logger.error("Run mako-setup-anvio-databases first")
-        #exit(-1)
+    else:     
+        logger.error("Run mako-setup-anvio-databases first")
+        exit(-1)
         
 
 def module(module,args):

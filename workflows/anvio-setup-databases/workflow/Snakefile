@@ -18,13 +18,13 @@ dbfile = config["file"]
 RESDIR = os.path.dirname(dbfile)
 dbdir = config["dir_anvio"]
 
-if os.path.exists(dbfile):
-    wlogger.warning("Databases have already been downloaded. If you want to re-download them use --force")
-    exit(0)
 
 if os.path.exists(dbfile) and config["force"]:
-    os.path.remove(dbfile)
+    os.remove(dbfile)
     config["reset"] = True
+else:
+    wlogger.warning("Databases have already been downloaded. If you want to re-download them use --force")
+    exit(0)
 
 rule anvio_setup_target:
     output:

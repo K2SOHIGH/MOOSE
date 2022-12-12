@@ -217,9 +217,9 @@ rule anvio_contig_reformat:
         10
     shell:"""
         if {params.reformat}; then
-            anvi-script-reformat-fasta  -o {output} -l {params.minlen} --simplify-names {input} -;
+            anvi-script-reformat-fasta  -o {output} -l {params.minlen} --simplify-names {input};
         else
-            anvi-script-reformat-fasta  -o {output} -l {params.minlen} {input} -; 
+            anvi-script-reformat-fasta  -o {output} -l {params.minlen} {input}; 
         fi
         """
         #       elif [[ {input} == *.gz ]] ; then 
