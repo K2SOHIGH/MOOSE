@@ -25,6 +25,8 @@ RESDIR = os.path.dirname(dbfile)
 TARGETDB = config["db"]
 DBDIR = config["dir"]
 
+print(os.path.join(RESDIR,TARGETDB+".done"))
+
 if os.path.exists(dbfile):
     KAIJUDBS = json.load(open(dbfile))    
     if TARGETDB in KAIJUDBS:
