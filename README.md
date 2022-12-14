@@ -1,11 +1,11 @@
-# MAKOS
-MetAgenomics worKflOws 
+# MAKO
+MetAgenomics worKflOw
 
 <p align="center">
   <img src="mako.png">
 </p>
 
-MAKOS is basically a bunch of wrapper/tools to process one or more samples/genomes through classical workflows in (meta)genomics such as megahit, SPADES, CheckM, GTDB-TK, Prodigal, etc...
+MAKO is basically a bunch of wrapper/tools to process one or more samples/genomes through classical workflows in (meta)genomics such as megahit, SPADES, CheckM, GTDB-TK, Prodigal, etc...
 Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.io/en/stable/) and can be easily deployed on a cluster.
 
 # summary
@@ -120,10 +120,10 @@ mako-contigs-profiling -i samples.yaml -o ANVIO-PROFILES
 Where samples.yaml fellow the format below:
 
 ```yaml
-sampleid:
+{sampleID}:
 	fasta: /path/to/assembly
 	bams:
-		bamID: /path/to/sorted/bam
+		{bamID}: /path/to/sorted/bam/
 ```
 
 ## CDS processing.
