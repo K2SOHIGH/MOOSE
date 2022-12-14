@@ -96,7 +96,6 @@ def main():
     args.dbfile = f                
     utils.module(
             "kaiju-snakemake-module",
-            #os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
             args
         )
 

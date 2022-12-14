@@ -47,6 +47,11 @@ def get_anvio_db_path():
         
 
 def module(module,args):
+    """
+    temporary files were problematic 
+    when executing mako module on a 
+    cluster (slurm)
+    """
     configdir = os.path.expanduser( '~' )
     configdir = os.path.abspath(
         os.path.join(os.path.dirname(__file__),".." )

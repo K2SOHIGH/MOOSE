@@ -61,7 +61,6 @@ def main():
             
     utils.module(
             "anvio-pan-magic-snakemake-module",
-            os.path.join( os.path.abspath( os.path.dirname(__file__)) , "../condaenvs"),
             args
         )
 
