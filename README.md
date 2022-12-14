@@ -57,7 +57,8 @@ mako-setup-interproscan -d INTERPROSCAN_SETUP
 ### mako-setup-kaiju
 Download kaiju database(s) and make them available for [mako-reads-classify](#mako-reads-classify) command.
 if --kaiju option set then kaiju-makedb utility will be used to download a database and index it.
-:warning: might be slow and memory intensive, see [Kaiju](https://github.com/bioinformatics-centre/kaiju) documentation for details.
+
+:warning: It might be slow and memory intensive, see [Kaiju](https://github.com/bioinformatics-centre/kaiju) documentation for details.
 
 ```
  mako-setup-kaiju --db fungi -d kaijuDB/fungi
@@ -75,6 +76,18 @@ Exemple usage :
 ```
 mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
 mako-reads-qc -i samples.yaml -o READSQC 
+```
+
+where samples.yaml should have the structure below:
+
+```yaml
+sampleID:
+  long_reads_type: nanopore
+  reads:
+    long_reads:
+    - /path/to/long/reads
+    paired_end:
+    - /path/to/short/readsP1;/path/to/short/readsP2
 ```
 
 ### mako-reads-assembly
@@ -95,6 +108,8 @@ Exemple usage :
 mako-make-sample-file -i <dir> -1 _R1 -2 _R2 -l _LR_1 > samples.yaml
 mako-reads-assembly -i samples.yaml -o ASSEMBLY --workflow SRO SRF -a unicycler
 ```
+
+See `mako-reads-qc` for details about sample.yaml.
 
 ## Contigs processing.
 ### mako-contigs-classify
@@ -121,9 +136,9 @@ Where samples.yaml fellow the format below:
 
 ```yaml
 sampleID:
- fasta: /path/to/assembly
- bams:
-  bamID: /path/to/sorted/bam/
+    fasta: /path/to/assembly
+    bams:
+        bamID: /path/to/sorted/bam/
 ```
 
 ## CDS processing.
