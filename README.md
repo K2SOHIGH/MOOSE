@@ -17,7 +17,7 @@ Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.i
 
 
 - **Reads processing.**
-	- [mako-reads-qc)](#mako-reads-qc) - Quality check short reads and long reads using respectively [fastqc](https://github.com/s-andrews/FastQC) and [nanoplot](https://github.com/wdecoster/NanoPlot). 
+	- [mako-reads-qc](#mako-reads-qc) - Quality check short reads and long reads using respectively [fastqc](https://github.com/s-andrews/FastQC) and [nanoplot](https://github.com/wdecoster/NanoPlot). 
 	- [mako-reads-assembly](#mako-reads-assembly) - Assemble short reads and long reads in short-reads-only (SRO) or short-reads-first (SRF \[hybrid\]) modes using [megahit](https://github.com/voutcn/megahit) (SRO-only), [spades](https://github.com/ablab/spades) and/or [unicycler](https://github.com/rrwick/Unicycler).
 
 - **Contigs processing.**
