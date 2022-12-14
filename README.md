@@ -120,10 +120,10 @@ mako-contigs-profiling -i samples.yaml -o ANVIO-PROFILES
 Where samples.yaml fellow the format below:
 
 ```yaml
-{sampleID}:
-	fasta: /path/to/assembly
-	bams:
-		{bamID}: /path/to/sorted/bam/
+sampleID:
+ fasta: /path/to/assembly
+ bams:
+  bamID: /path/to/sorted/bam/
 ```
 
 ## CDS processing.
