@@ -1,0 +1,8 @@
+refseq: https://kaiju.binf.ku.dk/database/kaiju_db_refseq_2022-03-23.tgz #2022-03-23 (24GB)
+progenomes: https://kaiju.binf.ku.dk/database/kaiju_db_progenomes_2021-03-02.tgz
+nr_euk: https://kaiju.binf.ku.dk/database/kaiju_db_nr_euk_2022-03-10.tgz #2022-03-10 (71GB)
+nr: https://kaiju.binf.ku.dk/database/kaiju_db_nr_2022-03-10.tgz #2022-03-10 (59GB)
+fungi: https://kaiju.binf.ku.dk/database/kaiju_db_fungi_2022-03-29.tgz #2022-03-29 (2.9GB)
+viruses: https://kaiju.binf.ku.dk/database/kaiju_db_viruses_2022-03-29.tgz #2022-03-29 (226MB)
+plasmids: https://kaiju.binf.ku.dk/database/kaiju_db_plasmids_2022-04-10.tgz #2022-04-10 (966MB)
+rvdb: https://kaiju.binf.ku.dk/database/kaiju_db_rvdb_2022-04-07.tgz #2022-04-07 (983MB)

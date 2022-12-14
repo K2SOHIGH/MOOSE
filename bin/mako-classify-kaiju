@@ -92,7 +92,7 @@ def get_args():
 
 def main():
     args = get_args()
-    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "anviodb.json" )  )
+    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "kaiju.json" )  )
     args.dbfile = f                
     utils.module(
             "kaiju-snakemake-module",

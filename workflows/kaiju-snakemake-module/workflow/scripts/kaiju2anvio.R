@@ -44,5 +44,5 @@ kaiju2mat <- function(kaiju.names, parallel) {
 #__MAIN__
 kaiju.names <- read.table(file = args[1], sep = "\t", fill = TRUE, row.names = NULL, header = FALSE, quote = "")
 kaijumat<-kaiju2mat(kaiju.names=kaiju.names, parallel = parallel)
-write.table(kaijumat, file = args[2], quote = FALSE, col.names = TRUE, row.names = FALSE)
+write.table(kaijumat, file = args[2], sep = "\t", quote = FALSE, col.names = TRUE, row.names = FALSE)
 

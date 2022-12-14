@@ -6,6 +6,8 @@ configfile: "config/config.yaml"
 import os
 import pandas as pd
 import yaml
+import json
+import glob
 import logging
 import shutil
 from utils import utils
@@ -15,68 +17,82 @@ from utils import log
 wlogger = log.setlogger(__name__)
  
 dbfile = config["dbfile"]
-# os.path.abspath(
-#     os.path.join(
-#         os.path.dirname(__file__), ".." , "resources" , "kaiju.json"
-#     )
-# )
 RESDIR = os.path.dirname(dbfile)
 
 TARGETDB = config["db"]
 DBDIR = config["dir"]
+DEFAULTDBS = yaml.load(open(workflow.source_path("../resources/kaiju-dbs.yaml")),Loader=yaml.SafeLoader)
+if TARGETDB not in DEFAULTDBS:
+    config["kaiju_makedb"]=True
 
-print(os.path.join(RESDIR,TARGETDB+".done"))
-
-if os.path.exists(dbfile):
-    KAIJUDBS = json.load(open(dbfile))    
-    if TARGETDB in KAIJUDBS:
-        if os.path.isdir(KAIJUDBS[TARGETDB]["directory"]):
-            if config["force"]:
-                shutil.rmtree(KAIJUDBS[TARGETDB]["directory"])
-                os.path.remove(dbfile)
-
-            wlogger.warning("Kaiju {} database \
-                have already been downloaded. If you want to re-download it use --force".format(config["DB"]))
-            exit(0)
-        else:
-            wlogger.warning("Kaiju {} database \
-                have already been downloaded but is not present at {}".format(config["DB"], KAIJUDBS[TARGETDB]["directory"] ))
-            exit(-1)
-else:
-    wlogger.info("Kaiju {} database will be download ! ".format(TARGETDB.upper() ))
 
     
+def get_input(wildcards):
+    if config["kaiju_makedb"]:
+        return os.path.join(RESDIR, TARGETDB+".kaiju.done")
+    else:
+        return os.path.join(DBDIR,TARGETDB+".tar.gz")
+
+
+onstart:
+    if os.path.exists(dbfile):
+        KAIJUDBS = json.load(open(dbfile))    
+        if TARGETDB in KAIJUDBS:
+            if os.path.isfile(KAIJUDBS[TARGETDB]["fmi"]):
+                if config["force"]:
+                    wlogger.info("removing {} .... ".format(TARGETDB.upper()))
+                    os.remove(KAIJUDBS[TARGETDB]["fmi"])
+                    os.remove(KAIJUDBS[TARGETDB]["names"])
+                    os.remove(KAIJUDBS[TARGETDB]["nodes"])
+                    wlogger.info("done.")
+                else:
+                    wlogger.warning("Kaiju {} database have already been downloaded. If you want to re-download it use --force".format(TARGETDB))
+                    exit(0)
+    else:
+        wlogger.info("Kaiju {} database will be download ! ".format(TARGETDB.upper() ))
+
+    if TARGETDB in DEFAULTDBS:
+        wlogger.info("{} will be download from {}".format(
+            TARGETDB.upper(), DEFAULTDBS[TARGETDB]
+        ))
+    else:
+        wlogger.warning("{} is not suitable for direct download, kaiju-makedb util will be used instead.".format(
+            TARGETDB.upper(),
+        ))
+
 rule setup_kaiju_database_file:
     output:
-        os.path.join(RESDIR,TARGETDB+".done")
+        temp(os.path.join(RESDIR,"kaiju-"+TARGETDB+".done"))
     input:
-        os.path.join(
-            RESDIR, TARGETDB+".kaiju.done"
-        )
+        get_input,
     params:
         dbdir = DBDIR,    # where the new DB will be store.
         db = TARGETDB,    # the request database.
         dbfile = dbfile,  # json file where db details are stored.
-    run:        
-        import json
-        import glob
+    run:     
         if os.path.exists(params.dbfile):
             dbconfigs = json.load(open(str(params.dbfile)))
         else:
-            dbconfigs = {}
-        
-        basedir = os.path.join(str(params.dbdir),db)
-        fmi = os.path.abspath(glob.glob(basedir+"/*.fmi"))
-        nodes = os.path.abspath(os.path.join(str(params.dbdir),"nodes.dmp"))
-        names = os.path.abspath(os.path.join(str(params.dbdir),"names.dmp"))
+            dbconfigs = {}        
+        fmi = []
+        nodes = []
+        names = [] 
+        for dir,_,_ in os.walk(str(params.dbdir)):
+            fmi.extend(glob.glob(os.path.join(dir,"*{}*.fmi".format(str(params.db))))) 
+            nodes.extend(glob.glob(os.path.join(dir,"nodes.dmp")))
+            names.extend(glob.glob(os.path.join(dir,"names.dmp")))
+
+        fmi = os.path.abspath(fmi[0]) if fmi else ""
+        nodes = os.path.abspath(nodes[0]) if nodes else ""
+        names = os.path.abspath(names[0]) if names else ""
         if not os.path.exists(fmi):
-            wlogger.error("{} not found.".format(fmi))
+            #wlogger.error("{} not found.".format(fmi))
             exit(-1)          
         if not os.path.exists(nodes):
-            wlogger.error("{} not found.".format(nodes))
+            #wlogger.error("{} not found.".format(nodes))
             exit(-1)
         if not os.path.exists(names):
-            wlogger.error("{} not found.".format(names))
+            #wlogger.error("{} not found.".format(names))
             exit(-1)            
         files = { params.db:{
                     "fmi": fmi,
@@ -88,12 +104,23 @@ rule setup_kaiju_database_file:
         json.dump(dbconfigs,open(str(params.dbfile),'w'))
         open(str(output),'w').close()
 
+
+rule download_kaiju_database:
+    output:    
+        temp(
+            os.path.join(DBDIR,TARGETDB+".tar.gz")
+        ),
+    params:
+        url =  DEFAULTDBS[TARGETDB] if TARGETDB in DEFAULTDBS else "",
+        outdir = os.path.abspath(DBDIR),
+    shell:
+       "mkdir -p {params.outdir} && curl -o {output} {params.url}; "
+       "tar -xvf {output} -C {params.outdir}"
+
 rule setup_kaiju_database:
     output:
         temp(
-            os.path.join(
-                RESDIR, TARGETDB+".kaiju.done"
-            )
+            os.path.join(RESDIR, TARGETDB+".kaiju.done")
         )
     params:
         dbdir = DBDIR,
