@@ -13,7 +13,7 @@ from utils import log
 
 wlogger = log.setlogger(__name__)
 
-
+print(config)
 def find_interpro():
     if config["interproscan_dir"]:
         wlogger.info("Interproscan directory : {}".format(config["interproscan_dir"]))
