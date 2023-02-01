@@ -16,6 +16,7 @@ wlogger = log.setlogger(__name__)
 
 def find_interpro():
     if config["interproscan_dir"]:
+        wlogger.info("Interproscan directory : {}".format(config["interproscan_dir"]))
         if os.path.exists(
                 os.path.join(config["interproscan_dir"],"interproscan.sh")):
             interproexec = os.path.join(config["interproscan_dir"],"interproscan.sh")
