@@ -5,6 +5,7 @@ import argparse
 import shutil
 import multiprocessing
 import yaml
+import platform
 from utils import utils
 from utils import log
 
@@ -29,6 +30,10 @@ def get_args():
 def main():
     args = get_args()
     
+    if platform.system() != "Linux":
+        logger.error("Interproscan can not be installed in another system than linux :/")
+        exit(-1)
+
     o = os.system(
         """
             mkdir -p {dir};

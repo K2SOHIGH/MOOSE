@@ -121,6 +121,7 @@ rule checkM_qa_full:
     params:
         checkm_dir = lambda wildcards, output: os.path.dirname(output.tsv),
         checkm_data = config["CheckM_data"],
+        markerfile =  lambda wildcards, output: os.path.dirname(output.tsv) + "lineage.ms",
     log:
         os.path.join(config['res_dir'], 'logs', "{batch}", checkm_res , "stats_full.log")
     benchmark:
@@ -132,7 +133,7 @@ rule checkM_qa_full:
         "--tab_table "                      # output as tab-separated file
         "-f {output.tsv} "                  # output filename
         "-t {threads} "
-        "{params.checkm_dir}/lineage.ms "   # <marker file>
+        "{params.markerfile} "   # <marker file>
         "{params.checkm_dir} "              # <output folder>
         "&>> {log} "
 
@@ -178,7 +179,7 @@ rule checkM_taxonomy_wf:
     log:
         os.path.join(config['res_dir'], 'logs', "{batch}", checkm_res , "taxonomy_wf.log")
     shell:
-        "echo \"{params.checkm_data}\" | checkm data setRoot {params.checkm_data} &>> {log}; "
+        "echo \"{params.checkm_data}\" export LC_ALL=C ; checkm data setRoot {params.checkm_data} &>> {log}; "
         "checkm taxonomy_wf "
         "{params.rank} "
         "{params.taxon} "
@@ -221,7 +222,7 @@ rule checkM_lineage_wf:
     benchmark:
         config["res_dir"] + "/benchmarks/lineagewf/{batch}.txt"    
     shell:
-        "echo {params.checkm_data}; export LC_ALL=C : "
+        "echo {params.checkm_data}; export LC_ALL=C ; "
         "checkm data setRoot {params.checkm_data} &>> {log}; "
         "checkm lineage_wf "
         "--tab_table "          # output as a tab-separated file
