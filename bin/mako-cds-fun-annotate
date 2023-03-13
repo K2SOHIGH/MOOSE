@@ -17,6 +17,7 @@ logger.info(os.path.basename(__file__))
 
 def find_interpro():
     f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "interproscan.txt" ) )
+    print(f)
     if os.path.exists(f):
         interprodir = open(f).read()
         if os.path.isdir(interprodir):
@@ -51,7 +52,7 @@ def get_args():
         '--interproscan-dir',                
         type = str,
         default=find_interpro(),
-        help="path to interproscan directory"
+        help="path to interproscan directory [default : {}]".format(find_interpro())
     )    
 
     parser.add_argument(
