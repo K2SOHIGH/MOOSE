@@ -1,0 +1,126 @@
+configfile: "config/config.yaml"
+
+import os
+import yaml
+
+from snakemake import logger
+
+try:
+    from moose.utils.utils import show_config
+    show_config(config)
+except:
+    pass
+
+
+def validate_config():
+    if config["GTDB"] is None or not os.path.isdir(config["GTDB"]):
+        logger.error("GTDB is missing ! See u !")
+        exit(-1)
+    if config["GTDB_mash"]:
+        config["GTDB_mash"] = {i.split("=")[0]:i.split("=")[1]  for i in config["GTDB_mash"].split(",")}             
+    return None
+
+validate_config()
+BINS = config["genome_input"]
+
+if not BINS:
+    logger.error("No bins provided :(")
+    exit(-1)   
+
+RESDIR = config["output"]
+tmp_dir= os.path.join(RESDIR,"tmp")
+#BATCHES = io.bins2batches(BINS,config["batch_size"])
+
+GTDBSUMMARYCOLS = ['user_genome',
+ 'classification',
+ 'fastani_reference',
+ 'fastani_reference_radius',
+ 'fastani_taxonomy',
+ 'fastani_ani',
+ 'fastani_af',
+ 'closest_placement_reference',
+ 'closest_placement_radius',
+ 'closest_placement_taxonomy',
+ 'closest_placement_ani',
+ 'closest_placement_af',
+ 'pplacer_taxonomy',
+ 'classification_method',
+ 'note',
+ 'other_related_references(genome_id,species_name,radius,ANI,AF)',
+ 'msa_percent',
+ 'translation_table',
+ 'red_value',
+ 'warnings']
+
+
+
+rule gm_target_gtdbtk:
+    output:
+        touch(temp(os.path.join(RESDIR,"gtdbtk-res","gtdbtk.done")))
+    input:
+        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.clean.tsv"),
+    
+rule gm_GTDBTK_clean_table:
+    output:
+        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.clean.tsv")
+    input:
+        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.tsv")
+    run:
+        import os
+        import pandas as pd
+        if os.stat(str(input)).st_size != 0:
+            df = pd.read_csv(str(input),sep="\t",header=0,index_col=None)        
+            df.user_genome = df.user_genome.str.replace("USER_","")
+            df.to_csv(str(output),sep="\t",header=True,index=False)
+        open(str(output),'w').close()
+
+
+rule gm_concatenate_archaea_and_bacteria_results:
+    output:
+        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.tsv")                                            
+    input:
+        bac = os.path.join(RESDIR , "gtdbtk-res","gtdbtk.bac120.summary.tsv"),
+                        #"classify", 
+        ar = os.path.join(RESDIR , "gtdbtk-res", "gtdbtk.ar53.summary.tsv"), 
+                        #"classify", 
+    shell:
+        "cat {input} | grep -m 1 user_genome > {output} && " # grep header from input files, either input.bac and input.ar can be empty
+        "tail -q -n +2 {input} >> {output} "
+        # "cat {input.bac} "                # keep header from first input
+        # "<(tail -q -n +2 {input.ar}) "    # remove header from other input
+        # "> {output} "
+
+
+rule gm_gtdbtk_classify_wf:
+    output:
+        os.path.join(RESDIR , "gtdbtk-res",  "gtdbtk.ar53.summary.tsv"),        
+        os.path.join(RESDIR , "gtdbtk-res",  "gtdbtk.bac120.summary.tsv"),
+    input:
+        os.path.join(RESDIR , "gtdbtk-res", "batchfile.tsv")
+    params:
+        outdir = os.path.join(RESDIR , "gtdbtk-res"),
+        gtdbtk_data = config["GTDB"],
+    threads:
+        15
+    shell:
+        "export GTDBTK_DATA_PATH={params.gtdbtk_data}; "
+        "gtdbtk classify_wf "
+        "--mash_db {params.gtdbtk_data} "
+        "--batchfile {input} "
+        "--out_dir {params.outdir} "
+        "--cpus {threads} --debug && "
+        "touch {output}"
+
+
+rule gm_gtdbtk_batchfile:
+    output:
+        os.path.join(RESDIR , "gtdbtk-res", "batchfile.tsv")
+    params:
+        input_datas = BINS
+    run: 
+        with open(str(output),'w') as fh:
+            for gid, files in params.input_datas.items():
+                fh.write("{}\tUSER_{}\n".format(                    
+                    files["genome"],
+                    gid
+                )) 

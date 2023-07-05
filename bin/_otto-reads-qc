@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os
+import argparse
+import shutil
+import multiprocessing
+import yaml
+from utils import utils
+from utils import log
+
+
+logger = log.setlogger(os.path.basename(__file__))
+logger.info(os.path.basename(__file__))
+    
+
+def get_args():
+    parser = argparse.ArgumentParser(
+        prog=os.path.basename(__file__),
+        description='Long reads and short reads quality check')
+
+    parser.add_argument('-i', "--input" , required=True, default=None ,  type=str , help = "input YAML file, see README.md for format.")
+
+    parser.add_argument('-o', '--output-dir'  , default = "." , type=str)
+
+    parser.add_argument('--rerun' , action='store_true')
+
+    parser.add_argument(        
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
+
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
+            help='snakmake arguments')
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = get_args()
+    utils.module(
+        "moose-reads-qc",
+        args
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+

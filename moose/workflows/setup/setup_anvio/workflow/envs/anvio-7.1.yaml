@@ -1,0 +1,41 @@
+name: anvio
+channels:
+  - conda-forge
+  - anaconda
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.6
+  - django
+  - sqlite
+  - prodigal
+  - idba
+  - mcl
+  - muscle=3.8.1551
+  - hmmer
+  - diamond
+  - blast
+  - megahit
+  - spades
+  - bowtie2
+  - pysam
+  - tbb
+  - bwa
+  - graphviz
+  - samtools[version='>=1.9']
+  - trimal
+  - iqtree
+  - trnascan-se
+  - fasttree
+  - vmatch
+  - r-base
+  - r-tidyverse
+  - r-optparse
+  - r-stringi
+  - r-magrittr
+  - bioconductor-qvalue
+  - fastani
+  - pip
+  - anvio[version'>=7']
+  # - pip:
+  #   - git+https://github.com/merenlab/anvio.git#requirements.txt

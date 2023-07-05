@@ -1,0 +1,78 @@
+configfile: "config/config.yaml"
+
+import os
+import pandas as pd
+import yaml
+
+from snakemake import logger
+try:
+    from moose.utils.utils import show_config
+    show_config(config)
+except:
+    pass
+
+
+def find_interpro():
+    if config["interproscan_dir"]:
+        logger.info("Interproscan directory : {}".format(config["interproscan_dir"]))
+        if os.path.exists(
+                os.path.join(config["interproscan_dir"],"interproscan.sh")):
+            interproexec = os.path.join(config["interproscan_dir"],"interproscan.sh")
+            logger.info( "Interproscan location : {}".format(interproexec) )
+            return interproexec
+        else:
+            logger.error( "Can't find interproscan executable in {}".format(config["interproscan_dir"]))
+            exit(-1)
+    logger.error("You should specify the location of interproscan with the --interproscan-dir option or run otto-setup-interproscan.")
+    exit(-1)
+        
+        
+interproexec = "dummy"#find_interpro()
+
+
+RESDIR = config['RESDIR']
+FASTAS = config['INPUT']
+
+rule interproscan_target:
+    output:
+        os.path.abspath(os.path.join(RESDIR,"interproscan.tsv")),
+    input:
+        expand(os.path.join(RESDIR,"tmp","{fasta}","interproscan.{fasta}.tsv"),fasta=FASTAS,),
+    shell:
+        "cat {input} >> {output}"
+
+
+rule interproscan_parse:
+    output:
+        os.path.join(RESDIR,"tmp","{fasta}","interproscan.{fasta}.tsv")
+    input:
+        os.path.join(RESDIR,"tmp","{fasta}","tmp.{fasta}.tsv")   
+    run:
+        import pandas as pd
+        df = pd.read_csv(str(input),sep="\t",header=None)
+        df["wildcards"] = wildcards.fasta
+        df.to_csv(str(output),sep="\t",header=None,index=None)
+
+
+rule interproscan:
+    output:
+        temp(os.path.join(RESDIR,"tmp","{fasta}","tmp.{fasta}.tsv"))
+    input:
+        lambda wildcards: FASTAS[wildcards.fasta], 
+    params:
+        interproscanexec = interproexec,
+        prefix = os.path.join(RESDIR,"tmp","{fasta}","tmp.{fasta}"),
+        tmp = os.path.join(RESDIR,"tmp","{fasta}","tmp"),
+        seqtype = "p" if config["type"] == "proteic" else "n",
+        outformat = "TSV" if config["type"] == "proteic" else "GFF3",
+        cmd = lambda wildcards,input : "gunzip -c" if str(input).endswith(".gz") else "cat",
+    log:
+        os.path.join(RESDIR,"logs","interproscan.{fasta}.log")   
+    threads:
+        10
+    shell:        
+        "{params.cmd} {input} | sed 's/\*//g' | {params.interproscanexec} -t {params.seqtype} -i - "
+        "-b {params.prefix} -f {params.outformat} -T {params.tmp} "
+        "-dp --cpu {threads} >> {log} 2>> {log} && touch {output} "
+
+

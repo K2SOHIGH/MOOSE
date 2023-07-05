@@ -1,0 +1,105 @@
+import argparse
+import sys
+import os
+import yaml
+import logging
+import multiprocessing
+
+
+from utils import utils
+from utils import log
+
+logger = log.setlogger(__name__)
+
+def get_args():
+    parser = argparse.ArgumentParser(
+            prog=__name__,
+            description='Classify reads or genes using kaiju'
+        )
+
+    parser.add_argument(
+        '-i',
+        '--input',
+        dest="INPUT",
+        type = str,
+        required=True,
+        help="yaml file containing path to translated cds files , a fasta file or a directory containing fasta files"
+        )
+    
+    parser.add_argument(
+        '-o',
+        '--output-directory',
+        dest= "res_dir",
+        type = str,
+        default="classify-kaiju",
+        help="output directory"
+    )
+
+    parser.add_argument(
+        '--kaiju',        
+        dest = "KAIJUDB",
+        default="nr",
+        choices=["refseq","progenomes","nr","nr_euk","mar_ref","mar","fungi","viruses","plasmids","rvdb"], 
+        help="kaiju database",
+    )
+
+    parser.add_argument(
+        '--names',        
+        dest = "NAMES",
+        default=None,
+        type = str,
+        help="path to kaiju database names.dmp file"
+    )
+
+    parser.add_argument(
+        '--nodes',        
+        dest = "NODES",
+        default=None,
+        type = str,
+        help="path to kaiju database nodes.dmp file"
+    )
+
+    parser.add_argument(
+        '--fmi',        
+        dest = "FMI",
+        default=None,
+        type = str,
+        help="path to kaiju database .fmi file"
+    )
+    parser.add_argument(
+        '-e',
+        '--extension',
+        dest = "EXTENSION",
+        type = str,
+        default=".db",
+        help="input file extension"
+    )
+        
+    parser.add_argument(
+        '-t',
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count()-1,
+        help = "number of threads",
+    )
+
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
+            help='snakmake arguments')
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = get_args()
+    f = os.path.abspath(os.path.join(__file__, ".." , ".." , "resources" , "kaiju.json" )  )
+    args.dbfile = f                
+    utils.module(
+            "moose-proteins-classify",
+            args
+        )
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+    

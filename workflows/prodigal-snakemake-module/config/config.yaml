@@ -1,4 +1,0 @@
-genome_input : "test/cds.yaml" #fasta file, yaml file or directory
-genome_extension: ".fna"
-res_dir : "test/results"
-checkm_stats: null
