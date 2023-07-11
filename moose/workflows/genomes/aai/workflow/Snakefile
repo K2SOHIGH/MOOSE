@@ -1,0 +1,151 @@
+configfile: "config/config.yaml"
+
+import os
+import glob
+import yaml
+from snakemake import logger
+
+inputs = yaml.load(open(config['input']),Loader=yaml.SafeLoader)
+RESDIR = config['output']
+
+if not inputs:
+    logger.error("No genome specified.")
+    exit(-1)
+
+def compute_aai_pair(g):
+    l = list( g.keys() )
+    combi = {}
+    for p1 in g:
+        l.remove(p1)
+        if l:
+            combi[p1] = l.copy()
+    return combi
+
+combinations = compute_aai_pair(inputs)
+
+rule all:
+    input:
+        os.path.join(RESDIR,'aai.tsv'),
+        #os.path.join(RESDIR,'ezaai.tsv'),
+        os.path.join(RESDIR,"benchmarks",'caai.calculate.txt'),
+        #os.path.join(RESDIR,"benchmarks",'ezaai.extract.txt'),
+rule EXPAND_BENCHMARK:
+    output:
+        os.path.join(RESDIR,"benchmarks",'caai.calculate.txt'),
+        #os.path.join(RESDIR,"benchmarks",'ezaai.extract.txt'),
+    input:
+        os.path.join(RESDIR, "aai.tsv"),
+    params:
+        dir = os.path.join(RESDIR,"benchmarks","intermediates"),
+    shell:
+        "cat {params.dir}/caai* > {output[0]}"# && "
+        #"cat {params.dir}/ezaai* > {output[1]}"
+rule CAAI_EXPAND_CALCULATE:
+    output:
+        os.path.join(RESDIR, "aai.tsv"),
+    input:
+        expand(
+            os.path.join(RESDIR, 'tmp', "aai", '{query}.tsv' ), query = combinations,
+        )
+    run:
+        import pandas as pd
+        dfs = [pd.read_csv(str(f),sep='\t',header=0,index_col=0) for f in input]
+        pd.concat(dfs).to_csv(str(output) , sep='\t',index=True)
+
+
+def resolve_calculate_input(wildcards):
+        return expand(
+            os.path.join(RESDIR, 'tmp', "aai", wildcards.query+'_vs_{ref}.tsv'), ref = combinations[wildcards.query]
+        )
+
+def resolve_query(wildcards):
+    if config['cds']:
+        return inputs[wildcards.query]
+    return  os.path.join(RESDIR,'tmp','cds','{}.faa'.format(wildcards.query))
+
+def resolve_target(wildcards):
+    targets = combinations[wildcards.query]
+    if config['cds']:
+        return [inputs[t] for t in targets]
+    return [os.path.join(RESDIR,'tmp','cds','{}.faa'.format(t)) for t in targets]
+
+rule CAAI_CALCULATE:
+    output:
+        os.path.join(RESDIR, 'tmp', "aai", '{query}.tsv' ),
+    input:
+        i  =  resolve_query,
+        j  =  resolve_target,
+    params:
+        d = False,
+        e = "",
+        p = "",
+        t = "",
+        aln_mode = 2,
+        id = config['aai_id_threshold'],
+        cov= config['aai_cov_threshold'],
+        debug = True, #config['debug'],
+    conda:
+        'envs/mmseqs2.yaml'
+    benchmark:
+        os.path.join(RESDIR,"benchmarks","intermediates","caai.calculate-{query}.txt"),
+    script:
+        'scripts/calculate.py'
+
+# rule EZAII_CALCULATE:
+#     output:
+#         os.path.join(RESDIR, "ezaai.tsv"),
+#     input:
+#         expand(
+#             os.path.join(RESDIR,'tmp','dbs','{fid}.db'),fid=inputs
+#         ),
+#     threads: 1
+#     conda:
+#         "envs/ezaai.yaml"
+#     params:
+#         dbs = os.path.join(RESDIR,'tmp','dbs'),
+#         id = config['AAI_ID_THRESHOLD'],
+#         cov =config['AAI_COV_THRESHOLD'],
+#     benchmark:
+#         os.path.join(RESDIR,"benchmarks",'ezaai.calculate.txt'),
+#     shell:
+#         "EzAAI calculate "
+#         "-i {params.dbs} "
+#         "-j {params.dbs} "
+#         "-o {output} "
+#         "-p mmseqs "
+#         "-t {threads} "
+#         "-id {params.id} "
+#         "-cov {params.cov}"
+
+# def resolve_ezaai_input(wildcards):
+#     if config['cds']:
+#         return inputs[wildcards.fid]
+#     return os.path.join( RESDIR, 'tmp', 'cds', wildcards.fid+'.faa')
+
+# rule EZAII_EXTRACT:
+#     output:
+#         temp(os.path.join(RESDIR,'tmp','dbs','{fid}.fa')),
+#         os.path.join(RESDIR,'tmp','dbs','{fid}.db'),
+#     input:
+#         resolve_ezaai_input,
+#     conda:
+#         "envs/ezaai.yaml"
+#     params:
+#         seqtype = config['seqtype'],
+#         prep_input = lambda wildcards,input: "gunzip -c" if str(input).endswith('.gz') else "cat",
+#     benchmark:
+#         os.path.join(RESDIR,"benchmarks","intermediates","ezaai.extract-{fid}.txt"),
+#     shell:
+#         "{params.prep_input} {input} > {output[0]}  && EzAAI convert -i {output[0]} -o {output[1]} -s {params.seqtype}"
+
+rule CAAI_EXTRACT:
+    output:
+        os.path.join(RESDIR,'tmp','cds','{fid}.faa')
+    input:
+        lambda wildcards: inputs[wildcards.fid],
+    conda:
+        'envs/prodigal.yaml'
+    params:
+        cmd = lambda wildcards,input : "gunzip -c" if str(input).endswith('.gz') else "cat",        
+    shell:
+        '{params.cmd} {input} | prodigal -a {output}'#' && gzip {params.tmp}'

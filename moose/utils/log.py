@@ -43,7 +43,7 @@ format = "[%(asctime)s] [%(levelname)s] MOOSE | %(message)s"
 console.setFormatter(CustomFormatter(format))
 
 logger = logging.getLogger('MOOSE')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(console)
 
 def set_logger_level(ctx, self, value):

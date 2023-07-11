@@ -4,15 +4,48 @@ from importlib import resources
 
 from moose.utils.snake import Snake
 from moose.utils.log  import logger as logging
-from moose.utils.io import InputObj1,Pattern,Extension
 from moose import workflows
-
+from bin import main
 
 CONTEXT_SETTING = {
     'show_default': True,
     'help_option_names':['-h', '--help']
     }
 
+def parse_dlcs(k,v):
+    d = {}
+    if '_moose_' in k:
+        l = k.split('_moose_')
+        if isinstance(v,main.Liststr):
+            v = v.back_to_list()
+        d = {l.pop():v}
+        while(l):
+            d = {l.pop():d.copy()}
+    elif isinstance(v,main.Liststr):
+        d[k] = v.back_to_list()
+        print(v.back_to_list(),type(v.back_to_list()))
+    else:
+        d[k]=v
+    return d
+    
+def combineDicts(dictionary1, dictionary2):
+    output = {}
+    for item, value in dictionary1.items():
+        if dictionary2.get(item):
+            if isinstance(dictionary2[item], dict):
+                output[item] = combineDicts(value, dictionary2.pop(item))
+        else:
+            output[item] = value
+    for item, value in dictionary2.items():
+         output[item] = value
+    return output
+
+def ctx_to_config(module,ctx):
+    config = module.config
+    for k,v in ctx.params.items():
+        d = parse_dlcs(k,v)        
+        config = combineDicts(config,d)
+    return config
 
 def run(_,ctx):
     logging.info("""    
@@ -21,50 +54,46 @@ def run(_,ctx):
     #                MOOSE                #
     #                                     #
     #######################################
-    """)  
-    logging.debug('DEBUG mode')
+    """)          
     
-    module_name = ctx.info_name.lower().replace('-','_')
-
-    # MAKE CONFIG FILE    
-    # Update Snakefile configuration with CLI values and run workflow.
     module_path = Path(resources.files(workflows))
-    module = Snake( str(module_path / ctx.parent.info_name / module_name) )
-
-    params = {}
-    for i,j in ctx.params.items():
-        
-        if isinstance(j,InputObj1):
-            j = j.parse_input(j.path,ctx)
-        if isinstance(j,Extension) or isinstance(j,Pattern):
-            j = str(j)
-        params[i]=j
+    module = Snake( str(module_path / ctx.parent.info_name / ctx.info_name) )    
+    config = ctx_to_config(module,ctx)  
     
-    module.config.update(params)    
-    configfile = str(
-        Path(ctx.obj['config_dir']) / "{}.config.yaml".format(module_name))
-    
+    logging.debug(
+        "Configuration: \n"+yaml.dump(config, default_flow_style=False),
+    )
         
-    module.dump_config(configfile)
+    module.config.update(config)    
 
-    conda_prefix = ctx.obj['conda_dir']
+    configdir = Path(ctx.obj.get('config_dir'))
+    if not configdir:
+        configdir = Path().absolute()
+    configfile = str(configdir / "{}.config.yaml".format(ctx.info_name)) 
+    params = ["--configfile" , configfile]
+
+    conda_prefix = ctx.obj.get('conda_dir')
+    if conda_prefix:
+        params += ['--conda-prefix', conda_prefix]
+
     snakargs = ctx.obj["snakargs"].split()
-    snakargs.extend(["--configfile" , configfile , "--conda-prefix" , conda_prefix])
+    snakargs.extend(params)
     
-    logging.info(module_name.upper() + " - start ")
+    logging.info(ctx.info_name.upper() + " - start ")
+    module.dump_config(configfile)
     module.run(snakargs)   
-    logging.info(module_name.upper() + " - end ")
+    logging.info(ctx.info_name.upper() + " - end ")
 
 
 
-def show_config(config):    
-    logging.info("CONFIGURATION :\n"+yaml.dump(config, default_flow_style=False))
+# def show_config(config):    
+#     logging.info("CONFIGURATION :\n"+yaml.dump(config, default_flow_style=False))
 
 
 
-class Pipeline:
-    def __init__(self,modules):
-        self.modules=modules
+# class Pipeline:
+#     def __init__(self,modules):
+#         self.modules=modules
 
 
 

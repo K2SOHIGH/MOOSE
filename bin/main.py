@@ -1,22 +1,29 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pathlib import Path
-
-import click
 import yaml
+from pathlib import Path
+import click
+from moose.utils import io,utils
+from moose.utils.log import logger
 
-from bin.setup_moose import default_setting
-from bin.setup_anvio import setup_anvio
-from bin.genomes_aai import compute_aai
-from bin.genomes_genecall import genecall
-from bin.genomes_classify import classify
-from bin.genomes_quality import quality
-from bin.cds_annotate import annotate
+from bin import config as configuration
+from bin import misc
 
-from moose.utils.log import set_logger_level
-from moose.utils import utils
-
+class MooseDefault(click.Option):
+    def __init__(self, *args, **kwargs):
+        super(MooseDefault, self).__init__(*args, **kwargs)
+    def default_moose_setting(self,ctx):
+        moose_config_file = Path.home() / '.moose.conf'
+        d = {}
+        if moose_config_file.exists():
+            with open(moose_config_file,'r') as f:
+                d = yaml.load(f,Loader=yaml.SafeLoader)
+        if self.name in d:
+            return d[self.name]
+        return self.default
+    def get_default(self, ctx, **kwargs):
+        return  self.default_moose_setting(ctx)
 
 class CustomFormatter(click.HelpFormatter):    
     group_color = {
@@ -28,7 +35,6 @@ class CustomFormatter(click.HelpFormatter):
     def __init__(self,
                 indent_increment=2, width=None, max_width=None):
         super().__init__(indent_increment,width,max_width)
-        #self.color =  "\u001b[34m"#"\u001b[37m"
 
     def write_heading(self,heading):
         click.HelpFormatter.write_heading(
@@ -50,91 +56,227 @@ class CustomFormatter(click.HelpFormatter):
         )
         self.color = col
 
-class OptionDefault(click.Option):
-    def __init__(self, *args, **kwargs):  
-        super(OptionDefault, self).__init__(*args, **kwargs)
+@click.pass_context
+def snakemake_cmd(ctx,**kwargs):
+    """"""
+    logger.debug('Entry point call back function.')
+    utils.run(None,ctx)
 
-    def default_moose_setting(self,ctx):
-        moose_config_file = Path.home() / '.moose.conf'    
-        d = {}
-        if moose_config_file.exists():
-            with open(moose_config_file,'r') as f:
-                d = yaml.load(f,Loader=yaml.SafeLoader)
-        if self.name in d:
-            return d[self.name]
-        return self.default
+
+class Liststr(str):
+    def back_to_list(self):
+        return self.split(',')
+
+class ClickOPT(click.Option):    
+    TYPES_MAPPING = {
+        "integer" : int,
+        "float": float,
+        "str": str,
+        "list": list,
+        "dict": dict,    
+        None: str,
+    }
+
+    def __init__(self,*args,**kwargs):            
+        kwargs = self._parse_opt(*args, **kwargs)
+        super().__init__(*args,**kwargs)
+
+    def _parse_opt(self,*args,**kwargs):        
+        default_value = kwargs.get('default')        
+        if isinstance(default_value,bool):
+            kwargs['is_flag'] = True
+            kwargs['type'] = bool
+        elif isinstance(default_value,list):
+            kwargs['default'] = Liststr(",".join(default_value))
+            kwargs['type'] = Liststr
+        elif isinstance(default_value,dict):
+            raise TypeError('dict instance is not supported')
+        else:            
+            if kwargs.get('choices') and isinstance(kwargs.get('choices'),list):                
+                choices = [ str(_) for _ in [default_value] + kwargs.pop('choices')]
+                kwargs['type'] = click.Choice(choices)                
+            else:
+                # use click default
+                if not default_value:
+                    t = self.TYPES_MAPPING[kwargs.get('type')]
+                    kwargs['type'] = t
+                        
+        if kwargs.get('required'):                
+            kwargs.pop('default')
+           
+        return kwargs
     
-    def get_default(self, ctx, **kwargs):                
-        return  self.default_moose_setting(ctx)
+class Config:
+    def __init__(self,name,workflow_path):
+        self.name = name
+        self.path = workflow_path
+        self.info = ""
+        self.load_config()
+        self.load_help()
+        self.build_cmd()
+        self.clickopts()
+        logger.debug(
+            'loading {} module [{}]'.format(                
+                self.name,
+                self.path,
+                )
+            )
 
 
+    def build_cmd(self):
+        self.cmd = click.Command(
+            name=self.name,
+            short_help="",
+            callback=snakemake_cmd,
+            no_args_is_help=True,
+            help=self.info
+        )
+        
+    
+    def load_help(self):
+        f = Path(self.path) / "README.md"
+        if f.exists():
+            with open(str(f)) as fh:
+                self.info = fh.read()
+        
+    def load_config(self,file=None):        
+        if not file:
+            self.configfile = Path(self.path) / "config" / "config.yaml"
+        else:
+            self.configfile = Path(file)
+        if self.configfile.exists():
+            self.raw_config = yaml.load(open(self.configfile),Loader=yaml.SafeLoader)
+            self.parse_config()
+        else:
+            raise FileExistsError(self.configfile)
+
+    def parse_dict(self,mk,d):
+        nd = {}
+        for k,e in d.items():            
+            k = mk+"-moose-"+k
+            if isinstance(e,dict):
+                nd.update(self.parse_dict(k,e))
+            else:
+                nd[k] = e
+        return nd
+    
+    def get_opt_meta(self):
+        self.opt_meta = {}
+        for k in list(self.raw_config.keys()):
+            if k.endswith('.conf'):
+                kconf = self.raw_config.pop(k)
+                self.opt_meta[k.replace('.conf','')]=kconf        
+
+    def parse_config(self):
+        self.config = {}
+        self.get_opt_meta()
+        for key, value in self.raw_config.items():            
+            if isinstance(value,dict):
+                # flatten dict
+                self.config.update(
+                    self.parse_dict(key,value))
+            else:
+                self.config[key]=value
+    
+    def build_dcls(self,key):
+        return ["-{}".format(key[0]),
+            "--{}".format(key)
+        ]
+
+    def clickopts(self):
+        self.opts = []
+        short_flags = []
+        
+        for key, value in self.config.items():
+            params_dcls = self.build_dcls(key)            
+            if params_dcls[0] not in short_flags:
+                short_flags.append(params_dcls[0])
+            else:
+                params_dcls.pop(0)        
+
+            kwargs = {}
+            if key in self.opt_meta:                
+                kwargs = self.opt_meta[key]
+                            
+            opt = ClickOPT(
+                params_dcls,
+                default=value,
+                **kwargs
+                )
+            
+            self.opts.append(opt)
+            self.cmd.params.append(opt)            
+
+    # def show_opts(self):
+    #     for o in self.opts:
+    #         print(o , ":")
+    #         print(o.__dict__)
+    #         print('########')
 
 
+def init_cmds():
+    snakeflows = Path('moose/workflows/')
+    for parent in snakeflows.glob("*"):        
+        pname = parent.name#child.parents[0]                
+        if pname.startswith('_') or  pname.startswith('.'):
+            continue
+        pname = str(parent.name)#.replace('_','-') 
+        for child in parent.glob("*"):            
+            cname = str(child.name)
+            if cname.startswith('_') or  cname.startswith('.'):
+                continue            
+            #cname = cname#.replace('_','-')
+            configfile = child / 'config' / 'config.yaml'
+            snakefile = child / 'workflow' / 'Snakefile'             
+            if snakefile.exists() and configfile.exists():                                               
+                if  pname not in cli.commands:
+                    cli.add_command(click.Group(pname))                
+                cmd = Config(cname,str(child))                       
+                cli.commands[pname].add_command(cmd.cmd)
+            else:
+                logger.warning('Module structure is invalid and will be skip [{}/{}].'.format(
+                    pname,
+                    cname
+                ))
+
+
+context_settings=utils.CONTEXT_SETTING                  
 click.Context.formatter_class = CustomFormatter
-@click.group(context_settings=utils.CONTEXT_SETTING, )
+@click.group(context_settings=utils.CONTEXT_SETTING)
 @click.option('--conda-dir',
-            cls=OptionDefault,            
+            cls=MooseDefault,                  
             default=str(Path.home() / ".moose/conda-envs/"),
             )
 @click.option('--config-dir',
-            cls=OptionDefault,    
+            cls=MooseDefault,            
             default=str(Path.home() / ".moose/configs/"),            
             )
-@click.option('--snakargs',
-            cls=OptionDefault,    
+@click.option('--snakargs',  
+            cls=MooseDefault,          
             default="--use-conda",            
             )
 @click.option('--debug',
-            is_flag=True,
-            cls=OptionDefault,    
-            default=False,
-            callback=set_logger_level,
+            cls=MooseDefault,
+            is_flag=True,            
+            default=False,            
             )
+
+
 
 @click.pass_context
 def cli(ctx,**kwargs):
     ctx.obj.update(kwargs)
 
 
-@click.group()
-@click.pass_context
-def genomes(ctx,**kwargs):
-    """Genomes commands"""
-    
-
-@click.group()
-@click.pass_context
-def cds(ctx,**kwargs):
-    desc = """CDS commands"""
-
-@click.group()
-@click.pass_context
-def setup(ctx,**kwargs):
-    desc = """setup commands"""
-    
+cli.add_command(configuration.setup)
+cli.add_command(misc.misc)
 
 
 
-# GENOMES SUBCMDS
-genomes.add_command(compute_aai)
-genomes.add_command(genecall)
-genomes.add_command(classify)
-genomes.add_command(quality)
+def entry_point():      
+    init_cmds()
+    cli(obj={}) 
 
-# CDS SUBCMDS
-cds.add_command(annotate)
-
-# SETUP SUBCMDS
-setup.add_command(default_setting)
-setup.add_command(setup_anvio)
-
-# CMDS
-cli.add_command(genomes)
-cli.add_command(cds)
-cli.add_command(setup)
-def entry_point():  
-    cli(obj={})
-    
 
 if __name__ == '__main__':
     entry_point()

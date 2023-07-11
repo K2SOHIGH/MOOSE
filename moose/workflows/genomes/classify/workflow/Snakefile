@@ -13,22 +13,21 @@ except:
 
 
 def validate_config():
-    if config["GTDB"] is None or not os.path.isdir(config["GTDB"]):
+    if config["gtdb"] is None or not os.path.isdir(config["gtdb"]):
         logger.error("GTDB is missing ! See u !")
-        exit(-1)
-    if config["GTDB_mash"]:
-        config["GTDB_mash"] = {i.split("=")[0]:i.split("=")[1]  for i in config["GTDB_mash"].split(",")}             
+        exit(-1)           
     return None
 
 validate_config()
-BINS = config["genome_input"]
+
+BINS = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
 
 if not BINS:
     logger.error("No bins provided :(")
     exit(-1)   
 
 RESDIR = config["output"]
-tmp_dir= os.path.join(RESDIR,"tmp")
+TMP= os.path.join(RESDIR,"tmp")
 #BATCHES = io.bins2batches(BINS,config["batch_size"])
 
 GTDBSUMMARYCOLS = ['user_genome',
@@ -99,7 +98,7 @@ rule gm_gtdbtk_classify_wf:
         os.path.join(RESDIR , "gtdbtk-res", "batchfile.tsv")
     params:
         outdir = os.path.join(RESDIR , "gtdbtk-res"),
-        gtdbtk_data = config["GTDB"],
+        gtdbtk_data = config["gtdb"],
     threads:
         15
     shell:

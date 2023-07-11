@@ -1,0 +1,9 @@
+name: prodigal
+channels:
+  - default
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - prodigal
+prefix: /Users/mmillet/miniconda3/envs/prodigal

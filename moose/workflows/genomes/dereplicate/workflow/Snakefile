@@ -1,0 +1,68 @@
+configfile: "config/config.yaml"
+
+import os
+import yaml
+
+from snakemake import logger
+
+
+# input for dRep -> file with one genome per line  (must be gunzip)
+
+
+GENOMESDIR = config['input']
+RESDIR = config["output"]
+EXTENSION = config['extension']
+PATTERN = config['pattern']
+DREPOUT= os.path.join(RESDIR,"tmp")
+
+
+
+rule dRep_summary_table:
+    output:
+        Path(RESDIR) / 'dRep.tsv'
+    input:
+        wdb = Path(DREPOUT) / 'data_tables' / 'Wdb.csv', #wining_genome cluster score
+        cdb = Path(DREPOUT) / 'data_tables' / 'Cdb.csv', #genome Scluster, threshold, clumet, algo_comp, Pcluster
+    run:
+        """merge wdb and cdb in a unique table"""
+
+rule dRep:
+    """
+    DREPOUT
+    ├── data
+    │   ├── Clustering_files
+    │   ├── MASH_files
+    │   │   └── MASH_files
+    │   │       └── sketches
+    │   │           └── chunk_0
+    │   └── fastANI_files
+    │       └── tmp
+    ├── data_tables
+    ├── dereplicated_genomes
+    ├── figures
+    └── log
+    """
+    output:
+        directory( str(Path(DREPOUT) / "dereplicated_genomes" )),
+    params:
+        bindir = GENOMESDIR,
+        pattern = "*"+PATTERN if PATTERN else "",
+        extension = EXTENSION, #fasta format 
+        ignore_qual = "" if config['genome_qual_info'] else "--ignoreGenomeQuality",
+    shell:
+        "dRep dereplicate {output}  "
+        "-g {params.bindir}/{params.pattern}*{params.extension} "
+        "-l {params.minlen}         "
+        "-comp {params.mincomp}     "
+        "-con {params.mincont}      "
+        "{params.ignore_qual}       "
+        "-pa (params.primary_ani)   "
+        "-sa (params.secondary_ani) "
+        "-nc {params.cov_threshold} "
+        #"--multiround_primary_clustering " is_flag (to reduce ram)
+        ""
+
+# genomes info file must have :
+# genome, completeness, contamination where genome is the basename of the genome file
+
+

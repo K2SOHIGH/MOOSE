@@ -1,0 +1,14 @@
+input: null
+input.conf:
+  required: True
+  help: 'yaml file containg path to genomes (genome_label: genome_path)' 
+  type: 'str'
+
+cds: False
+
+output: moose-res/genomes/aai
+output.conf:
+  help: Output directory
+
+aai_id_threshold: 0.4
+aai_cov_threshold: 0.5

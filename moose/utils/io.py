@@ -5,8 +5,9 @@ from pathlib import Path
 from moose.utils.log  import logger as logging
 
 class IO:
-    def __init__():
-        """"""
+    def __init__(self,path):
+        self.path = path
+        
     def input_from_dir(self, path , extension , pattern=None):    
         files = {}
         if path.is_dir():
@@ -75,8 +76,8 @@ class InputObj1(IO):
     def __init__(self,path:str):
         self.path = Path(path)
 
-class InputType1(click.ParamType):
-    name = "genome_input_type"
+class MooseInputType(click.ParamType):
+    name = "moose_input_type"
     def convert(self, value, param, ctx):
         if isinstance(value, str):
             v = Path(value)

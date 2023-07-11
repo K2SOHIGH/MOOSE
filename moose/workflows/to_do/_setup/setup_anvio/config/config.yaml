@@ -1,0 +1,45 @@
+default_int: 10
+default_float: 5.5
+default_str: "_string_"
+default_list:
+  - item1
+  - item2
+  - item3
+default_choice: 'default_choice_1'
+default_choice.conf:
+  choices:
+    - 'default_choice_2'
+    - 'default_choice_3'
+default_dict:
+  sub_item_1 : 1
+  sub_item_2 : "str"
+  sub_item_3 : True
+  sub_item_4 :
+    - l1
+    - l2
+    - l3
+  sub_item_5:
+    l1: ok
+    l2: ok
+
+
+# ok-boloss: enculé
+# output:
+#   - e1
+#   - e2
+# dir_anvio:
+#   d1_d1:
+#     ok
+#   d2-d2:
+#     d31: 1
+#     d32: ok
+        
+# force: True
+# force.conf:
+#   help : 'force download'
+# threads: 12
+# threads.conf:
+#   choices:
+#     - 12
+#     - 13
+#     - 14

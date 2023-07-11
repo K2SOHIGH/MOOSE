@@ -1,8 +1,0 @@
-name: unicycler
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - unicycler
-prefix: /home/mmillet/miniconda3/envs/unicycler

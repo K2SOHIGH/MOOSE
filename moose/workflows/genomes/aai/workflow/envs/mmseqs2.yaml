@@ -1,0 +1,11 @@
+name: mmseqs
+channels:
+  - default
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - mmseqs2
+  - python=3.9
+  - pandas
+prefix: /Users/mmillet/miniconda3/envs/mmseqs

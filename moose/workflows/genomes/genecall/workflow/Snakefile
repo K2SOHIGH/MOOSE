@@ -7,15 +7,9 @@ import yaml
 
 from snakemake import logger
 
-from snakemake import logger
-try:
-    from moose.utils.utils import show_config
-    show_config(config)
-except:
-    pass
+print(config)
 
-
-BINS = config["genome_input"]
+BINS = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
 RESDIR = config['output']
 
 if not BINS:

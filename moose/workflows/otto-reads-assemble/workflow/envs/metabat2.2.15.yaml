@@ -1,8 +1,0 @@
-name: metabat2-2-15
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - metabat2
-prefix: /home/mmillet/miniconda3/envs/metabat2-2-15

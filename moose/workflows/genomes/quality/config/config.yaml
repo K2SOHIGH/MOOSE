@@ -1,7 +1,19 @@
-#CM stand to CheckM - this suffix avoid duplicated keys between worfklow (e.g, batch_size checkM / batch_size GTDB)
-genome_input : 'test/genomes.yaml'
-res_dir : test/results
-CheckM_data : null
+input : ""
+input.conf:
+  required: True
+  help: 'yaml file containg path to genomes (genome_label: genome_path)' 
+  type: 'str'
+
+output : moose-res/genomes/quality
+output.conf:
+  help: 'output directory'
+  
+
+checkm_data: null
+checkm_data.conf:
+  required: True
+  help: 'path to checkm datas'
+  type: 'str'
 
 taxonomy_wf:
   enable: FALSE
@@ -9,5 +21,4 @@ taxonomy_wf:
   taxon : ""
   
 batch_size : 1000
-genome_extension : "fna.gz"
 low_memory : True

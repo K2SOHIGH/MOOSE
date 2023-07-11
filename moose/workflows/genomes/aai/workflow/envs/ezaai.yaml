@@ -1,0 +1,9 @@
+name: ezaai
+channels:
+  - default
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - ezaai
+prefix: /Users/mmillet/miniconda3/envs/ezaai

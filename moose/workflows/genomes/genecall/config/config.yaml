@@ -1,5 +1,22 @@
-genome_input : "test/cds.yaml" #fasta file, yaml file or directory
-genome_extension: ".fna"
-output : "test/results"
+input : 'test/cds.yaml'
+input.conf:
+  required: True
+  help: 'yaml file containg path to genomes (genome_label: genome_path)' 
+
+output : 'moose-res/genomes/genecall'
+output.conf:
+  required: True
+  help: 'Output directory'
+
 checkm_stats: null
-mode: 'single'
+checkm_stats.conf:
+  help: 'CheckM statistics'
+
+mode: 'normal'
+mode.conf:
+  choices:    
+    - 'train'
+    - 'anon'
+    - 'meta'
+    - 'single'
+  help: 'Prodigal mode setting.'
