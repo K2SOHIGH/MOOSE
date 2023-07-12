@@ -4,23 +4,38 @@ input.conf:
   help: 'yaml file containg path to genomes (genome_label: genome_path)' 
   type: 'str'
 
-output : "moose-res/genomes/classify"
+output : "moose-res/genomes/dereplication"
 
-# merge_with: null
+length: 50000
+length.conf:
+  help: minimum genome length
 
-gtdb : null
-gtdb.conf:
-  required: True
-  type: 'str'
+completness: 75  
+completness.conf:
+  help: minimum genome completeness
 
-batch_size : 1000
+contamination: 25
+contamination.conf:
+  help: maxium genome contamination
 
-GTDB_isani: False
+ignore_quality: False
+ignore_quality.conf:
+  help: don't filter genomes based on quality
 
-GTDB_mash:
-  k : 16
-  s : 5000
-  d : 0.1 
-  v : 1.0
+qual_info: null
+qual_info.conf:
+  help: Don't run checkm with dRep but instead use the file provided to this option
 
-GTDB_fa_min_af : 0.65
+primary_ani: 0.95
+primary_ani.conf:
+  help: First clustering ANI threshold
+
+secondary_ani: 0.99
+secondary_ani.conf:
+  help: Second clustering ANI threshold
+   
+coverage: 0.1
+coverage.conf:
+  help: Minimum level of overlap for secondary clustering
+
+multiround: False

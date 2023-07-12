@@ -17,6 +17,57 @@ Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.i
 - [Classify](#moose-genomes-classify) - Genomes taxonomic classification using [GTDB-TK.V2](https://ecogenomics.github.io/GTDBTk/).
 
 
+## Add a new snakemake module
+
+A snakemake workflow should be structured as it is recommended by snakemake and should be stored under moose / workflows / {category} / {module name}
+```
+├── README.md
+├── config
+│   └── config.yaml
+└── workflow
+    ├── Snakefile
+    └── envs
+        └── <condaenv.yaml>
+```
+
+IMPORTANT : declaration variable inside a module should be protected for example with the name of the module as a prefix. Don't forget that python code outside rules is always executed by snakemake. Thus variable conflict could occure when pipeline utility will be implemented. Note that i'have two possibility to implemented the pipeline utility:
+- run each command sequencialy with configfiles provided by the user ... in this case module configuration and python code will be isolated.
+- create a new snakemake with subworkflows. In this case configuration should be isolated but python code of all subworkflows will be executed.
+
+moose will detect the module as a child of {category} and a command line interface will be built from the configfile required by snakemake.
+The config file should look like this one :
+
+```
+input : 'test/cds.yaml'
+input.conf:
+  required: True
+  help: 'yaml file containg path to genomes (genome_label: genome_path)'
+
+output : 'moose-res/genomes/genecall'
+output.conf:
+  required: True
+  help: 'Output directory'
+
+checkm_stats: null
+checkm_stats.conf:
+  help: 'CheckM statistics'
+
+mode: 'normal'
+mode.conf:
+  choices:
+    - 'train'
+    - 'anon'
+    - 'meta'
+    - 'single'
+  help: 'Prodigal mode setting.'
+
+```
+
+Command line Interface can be configured by setting a .conf attached to an option. Several parameters can be set :
+- required (boolean), the option will be mandatory.
+- choices (list), the option will have limited values.
+- help (str), display a message about the option.
+
 ## Genomes processing.
 ### moose-genomes-genecall 
 

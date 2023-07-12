@@ -9,12 +9,11 @@ from snakemake import logger
 # input for dRep -> file with one genome per line  (must be gunzip)
 
 
-GENOMESDIR = config['input']
+GENOMES = yaml.load(open(config['input']),Loader=yaml.SafeLoader)
 RESDIR = config["output"]
 EXTENSION = config['extension']
 PATTERN = config['pattern']
 DREPOUT= os.path.join(RESDIR,"tmp")
-
 
 
 rule dRep_summary_table:
@@ -25,6 +24,13 @@ rule dRep_summary_table:
         cdb = Path(DREPOUT) / 'data_tables' / 'Cdb.csv', #genome Scluster, threshold, clumet, algo_comp, Pcluster
     run:
         """merge wdb and cdb in a unique table"""
+        import pandas as pd
+        cdb = pd.read_csv("Cdb.csv",sep=',',index_col=0)
+        wdb = pd.read_csv("Wdb.csv",sep=',',index_col=0)
+        wdb['winning'] = True
+        df = pd.concat([cdb,wdb[['score','winning']]],axis=1)
+        df.winning.fillna(False,inplace=True)
+        df.to_csv(str(output),sep='\t',header=True,index=True)
 
 rule dRep:
     """
@@ -43,24 +49,45 @@ rule dRep:
     └── log
     """
     output:
-        directory( str(Path(DREPOUT) / "dereplicated_genomes" )),
+        # directory( str(Path(DREPOUT) / "dereplicated_genomes" )),
+        Path(DREPOUT) / "data_tables" / "Wdb.csv",
+        Path(DREPOUT) / "data_tables" / "Cdb.csv",
+    input:
+        Path(RESDIR) / "path_to_genomes.txt",
     params:
-        bindir = GENOMESDIR,
-        pattern = "*"+PATTERN if PATTERN else "",
-        extension = EXTENSION, #fasta format 
-        ignore_qual = "" if config['genome_qual_info'] else "--ignoreGenomeQuality",
+        minlen = config['length'],
+        mincomp = config['completness'],
+        mincom = config['contamination'],
+        ignore_qual = "--ignoreGenomeQuality" if config['ignore_quality'] else "",
+        genome_qual = "--genomeInfo" if config['qual_info'] else "",
+        primary_ani = config['primary_ani'],
+        secondary_ani = config['secondary_ani'],
+        cov_threshold = config['coverage'],
+        multiround = "--multiround_primary_clustering" if config['multiround'] else "",
     shell:
         "dRep dereplicate {output}  "
-        "-g {params.bindir}/{params.pattern}*{params.extension} "
+        "-g {input} "
         "-l {params.minlen}         "
         "-comp {params.mincomp}     "
         "-con {params.mincont}      "
         "{params.ignore_qual}       "
+        "{params.genome_qual}       "
         "-pa (params.primary_ani)   "
         "-sa (params.secondary_ani) "
         "-nc {params.cov_threshold} "
-        #"--multiround_primary_clustering " is_flag (to reduce ram)
-        ""
+        "{params.multiround}        " 
+        
+rule dRep_input_file:
+    output:
+        temp(Path(RESDIR) / "path_to_genomes.txt"),
+    params:
+        genomes = GENOMES,
+    run:
+        with open(str(output),'w') as fh:
+            for k,p in params.genomes:
+                fh.write(p+"\n")
+
+
 
 # genomes info file must have :
 # genome, completeness, contamination where genome is the basename of the genome file
