@@ -18,14 +18,14 @@ from moose.utils.log import logger
     )
 
 @click.option(
-    '--conda-dir',
-    default=str(Path.home() / ".moose/conda-envs/"),
+    '-d', '--moose-dir',
+    default=str(Path.home() / ".moose"),
     )
 
-@click.option(
-    '--config-dir',
-    default=str(Path.home() / ".moose/configs/"),
-    )
+# @click.option(
+#     '--config-dir',
+#     default=str(Path.home() / ".moose/configs/"),
+#     )
 
 @click.option(
     '--set-debug',
@@ -34,15 +34,14 @@ from moose.utils.log import logger
     )
 
 @click.pass_context
-def set_default(ctx,snakargs,conda_dir,config_dir,set_debug):        
+def set_default(ctx,snakargs,moose_dir,set_debug):        
     """
     Define default setting for moose utilities.
     """
     moose_config_file = Path.home() / '.moose.conf'    
     conf = {
         "snakargs":snakargs,
-        "conda_dir":conda_dir,
-        "config_dir":config_dir,
+        "moose_dir":moose_dir,        
         "debug":set_debug
     }
     with open(moose_config_file,'w') as f:

@@ -11,24 +11,19 @@ try:
 except:
     pass
 
+_genome_classify_input_ = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
 
-def validate_config():
-    if config["gtdb"] is None or not os.path.isdir(config["gtdb"]):
-        logger.error("GTDB is missing ! See u !")
-        exit(-1)           
-    return None
+if config["gtdb"] is None or not os.path.isdir(config["gtdb"]):
+    logger.error("GTDB is missing ! See u !")
+    exit(-1)           
 
-validate_config()
-
-BINS = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
-
-if not BINS:
+if not _genome_classify_input_:
     logger.error("No bins provided :(")
     exit(-1)   
 
-RESDIR = config["output"]
-TMP= os.path.join(RESDIR,"tmp")
-#BATCHES = io.bins2batches(BINS,config["batch_size"])
+_genome_classify_resdir_ = config["output"]
+_genome_classify_tmpdir_= os.path.join(_genome_classify_resdir_,"tmp")
+#BATCHES = io.bins2batches(_genome_classify_input_,config["batch_size"])
 
 GTDBSUMMARYCOLS = ['user_genome',
  'classification',
@@ -55,15 +50,15 @@ GTDBSUMMARYCOLS = ['user_genome',
 
 rule gm_target_gtdbtk:
     output:
-        touch(temp(os.path.join(RESDIR,"gtdbtk-res","gtdbtk.done")))
+        touch(temp(os.path.join(_genome_classify_resdir_,"gtdbtk.done")))
     input:
-        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.clean.tsv"),
+        os.path.join(_genome_classify_resdir_, "gtdbtk.ar53.bac120.summary.clean.tsv"),
     
 rule gm_GTDBTK_clean_table:
     output:
-        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.clean.tsv")
+        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.clean.tsv")
     input:
-        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.tsv")
+        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.tsv")
     run:
         import os
         import pandas as pd
@@ -76,31 +71,37 @@ rule gm_GTDBTK_clean_table:
 
 rule gm_concatenate_archaea_and_bacteria_results:
     output:
-        os.path.join(RESDIR , "gtdbtk-res","gtdbtk.ar53.bac120.summary.tsv")                                            
+        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.tsv")                                            
     input:
-        bac = os.path.join(RESDIR , "gtdbtk-res","gtdbtk.bac120.summary.tsv"),
+        bac = os.path.join(_genome_classify_resdir_ , "gtdbtk.bac120.summary.tsv"),
                         #"classify", 
-        ar = os.path.join(RESDIR , "gtdbtk-res", "gtdbtk.ar53.summary.tsv"), 
+        ar = os.path.join(_genome_classify_resdir_ ,  "gtdbtk.ar53.summary.tsv"), 
                         #"classify", 
     shell:
         "cat {input} | grep -m 1 user_genome > {output} && " # grep header from input files, either input.bac and input.ar can be empty
         "tail -q -n +2 {input} >> {output} "
-        # "cat {input.bac} "                # keep header from first input
-        # "<(tail -q -n +2 {input.ar}) "    # remove header from other input
-        # "> {output} "
+
 
 
 rule gm_gtdbtk_classify_wf:
     output:
-        os.path.join(RESDIR , "gtdbtk-res",  "gtdbtk.ar53.summary.tsv"),        
-        os.path.join(RESDIR , "gtdbtk-res",  "gtdbtk.bac120.summary.tsv"),
+        os.path.join(_genome_classify_resdir_ ,  "gtdbtk.ar53.summary.tsv"),        
+        os.path.join(_genome_classify_resdir_ ,  "gtdbtk.bac120.summary.tsv"),
     input:
-        os.path.join(RESDIR , "gtdbtk-res", "batchfile.tsv")
+        os.path.join(_genome_classify_resdir_ ,  "batchfile.tsv")
     params:
-        outdir = os.path.join(RESDIR , "gtdbtk-res"),
+        outdir = os.path.join(_genome_classify_resdir_),
         gtdbtk_data = config["gtdb"],
+    conda:
+        'envs/gtdbtk_2.1.yaml'
+    resources:
+        mem= 180000,
+        mem_mb= 180000,
+        time= "10-12", # time limit for each job
+        nodes= 1,
+        cpus_per_task= 10,     
     threads:
-        15
+        10
     shell:
         "export GTDBTK_DATA_PATH={params.gtdbtk_data}; "
         "gtdbtk classify_wf "
@@ -113,13 +114,13 @@ rule gm_gtdbtk_classify_wf:
 
 rule gm_gtdbtk_batchfile:
     output:
-        os.path.join(RESDIR , "gtdbtk-res", "batchfile.tsv")
+        os.path.join(_genome_classify_resdir_ ,  "batchfile.tsv")
     params:
-        input_datas = BINS
+        input_datas = _genome_classify_input_
     run: 
         with open(str(output),'w') as fh:
-            for gid, files in params.input_datas.items():
+            for gid, f in params.input_datas.items():
                 fh.write("{}\tUSER_{}\n".format(                    
-                    files["genome"],
+                    f,
                     gid
                 )) 

@@ -2,17 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import yaml
+from importlib import resources
 from pathlib import Path
+
 import click
+
+from moose import workflows
 from moose.utils import io,utils
 from moose.utils.log import logger
-
 from bin import config as configuration
 from bin import misc
+
 
 class MooseDefault(click.Option):
     def __init__(self, *args, **kwargs):
         super(MooseDefault, self).__init__(*args, **kwargs)
+
     def default_moose_setting(self,ctx):
         moose_config_file = Path.home() / '.moose.conf'
         d = {}
@@ -22,6 +27,7 @@ class MooseDefault(click.Option):
         if self.name in d:
             return d[self.name]
         return self.default
+    
     def get_default(self, ctx, **kwargs):
         return  self.default_moose_setting(ctx)
 
@@ -94,11 +100,17 @@ class ClickOPT(click.Option):
         else:            
             if kwargs.get('choices') and isinstance(kwargs.get('choices'),list):                
                 choices = [ str(_) for _ in [default_value] + kwargs.pop('choices')]
-                kwargs['type'] = click.Choice(choices)                
+                kwargs['type'] = click.Choice(choices)     
+                if not default_value:
+                    default_value = choices[0]
             else:
                 # use click default
-                if not default_value:
-                    t = self.TYPES_MAPPING[kwargs.get('type')]
+                if default_value:
+                    #t = self.TYPES_MAPPING[kwargs.get('type')]
+                    kwargs['type'] = type(default_value)#t
+                else:
+                    default_value = ""
+                    t = self.TYPES_MAPPING[kwargs.get('type')]  if self.TYPES_MAPPING[kwargs.get('type')] else str                    
                     kwargs['type'] = t
                         
         if kwargs.get('required'):                
@@ -180,7 +192,7 @@ class Config:
     
     def build_dcls(self,key):
         return ["-{}".format(key[0]),
-            "--{}".format(key)
+            "--{}".format(key),
         ]
 
     def clickopts(self):
@@ -205,17 +217,11 @@ class Config:
                 )
             
             self.opts.append(opt)
-            self.cmd.params.append(opt)            
-
-    # def show_opts(self):
-    #     for o in self.opts:
-    #         print(o , ":")
-    #         print(o.__dict__)
-    #         print('########')
+            self.cmd.params.append(opt)
 
 
 def init_cmds():
-    snakeflows = Path('moose/workflows/')
+    snakeflows =  Path(resources.files(workflows)) # Path('moose/workflows/')
     for parent in snakeflows.glob("*"):        
         pname = parent.name#child.parents[0]                
         if pname.startswith('_') or  pname.startswith('.'):
@@ -243,14 +249,14 @@ def init_cmds():
 context_settings=utils.CONTEXT_SETTING                  
 click.Context.formatter_class = CustomFormatter
 @click.group(context_settings=utils.CONTEXT_SETTING)
-@click.option('--conda-dir',
+@click.option('--moose-dir',
             cls=MooseDefault,                  
-            default=str(Path.home() / ".moose/conda-envs/"),
+            default=str(Path.home() / ".moose"),
             )
-@click.option('--config-dir',
-            cls=MooseDefault,            
-            default=str(Path.home() / ".moose/configs/"),            
-            )
+# @click.option('--config-dir',
+#             cls=MooseDefault,            
+#             default=str(Path.home() / ".moose/configs/"),            
+#             )
 @click.option('--snakargs',  
             cls=MooseDefault,          
             default="--use-conda",            

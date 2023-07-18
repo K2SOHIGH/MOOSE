@@ -7,12 +7,11 @@ import yaml
 
 from snakemake import logger
 
-print(config)
 
-BINS = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
-RESDIR = config['output']
+_genecall_input_ = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
+_genecall_resdir_ = config['output']
 
-if not BINS:
+if not _genecall_input_:
     logger.error("No genome provided :(")
     exit(-1)    
 
@@ -25,16 +24,25 @@ if not BINS:
 
 rule target_prodigal:
     input:
-        os.path.join(RESDIR,"tables","summary.tsv"),
-        expand(os.path.join(RESDIR, "cds","{bin}", "{bin}.coord.gff"),bin=BINS.keys()),
-        expand(os.path.join(RESDIR, "cds","{bin}", "{bin}_cds_nucleotide.fnn"),bin=BINS.keys()),
-        expand(os.path.join(RESDIR, "cds","{bin}", "{bin}_translated_cds.faa"),bin=BINS.keys()),
+        os.path.join(_genecall_resdir_,"tables","stats.tsv"),
+        expand(
+            os.path.join(_genecall_resdir_, "cds","{bin}", "{bin}.coord.gff"),
+            bin=_genecall_input_.keys()),
+        expand(
+            os.path.join(_genecall_resdir_, "cds","{bin}", "{bin}_cds_nucleotide.fnn"),
+            bin=_genecall_input_.keys()),
+        expand(
+            os.path.join(_genecall_resdir_, "cds","{bin}", "{bin}_translated_cds.faa"),
+            bin=_genecall_input_.keys()),
 
 def define_mode(wildcards,checkm_stats=config['checkm_stats']):
     if checkm_stats:
         if os.path.isfile(checkm_stats):
             df = pd.read_csv(checkm_stats,sep="\t",index_col=0)
-            comp,conta = df.loc[wildcards.bin,["completeness","contamination"]].values
+            comp,conta = df.loc[
+                wildcards.bin,
+                ["completeness","contamination"]
+                ].values
             if comp > 50 and conta < 10:
                 return "single"
             else:
@@ -43,52 +51,51 @@ def define_mode(wildcards,checkm_stats=config['checkm_stats']):
 
 rule expand_summary:
     output:
-        os.path.join(RESDIR,"tables","summary.tsv")
+        os.path.join(_genecall_resdir_,"tables","stats.tsv")
     input:
-        expand(os.path.join(RESDIR, "cds","{bin}","summary.tsv"),bin=BINS.keys())
+        expand(
+            os.path.join(_genecall_resdir_, "cds","{bin}","stats.tsv"),
+            bin=_genecall_input_.keys())
     shell:
-        'echo -e accession"\t"#contigs"\t"#genes"\t"prodigal_mode > {output} && '
+        'echo -e '
+        'file"\t"format"\t"type"\t"num_seqs"\t"sum_len"\t"min_len"\t"avg_len"\t"max_len"\t"label '
+        '> {output} && '
         'cat {input} >> {output} '
 
-rule summarize:
+rule Seqkit:
     output:
-        temp(os.path.join(RESDIR,"cds","{bin}","summary.tsv")),
+        temp(
+            os.path.join(_genecall_resdir_,"cds","{bin}","stats.tsv")
+            ),
     input:
-        sum= os.path.join(RESDIR, "cds","{bin}","{bin}.sum.txt"),
-        coor= os.path.join(RESDIR, "cds","{bin}","{bin}.coord.gff"),
-    params:
-        mode=define_mode,
+        lambda wildcards: _genecall_input_[wildcards.bin],
+    conda:
+        'envs/seqkit.yaml'
     shell:
-        'echo -e {wildcards.bin}"\t"'
-        '$(cat {input.sum} | wc -l)"\t"'
-        '$(cat {input.coor} | wc -l)"\t"'
-        '{params.mode} > {output}'
-
+        'seqkit stats {input} | '
+        'tail -n +2 | '
+        'sed "s/$/ {wildcards.bin}/g" | tr -s " " "\t" >  {output}'
 
 rule Prodigal:
     output:
-        sum_f = os.path.join(RESDIR, "cds","{bin}","{bin}.sum.txt"),
-        coordinates = os.path.join(RESDIR, "cds","{bin}","{bin}.coord.gff"),
-        tmp = temp(os.path.join(RESDIR, "cds","{bin}","{bin}.tmpcoord.gff")),
-        nucleo = os.path.join(RESDIR, "cds","{bin}" , "{bin}_cds_nucleotide.fnn"),
-        transl = os.path.join(RESDIR, "cds","{bin}", "{bin}_translated_cds.faa"),
+        coordinates = os.path.join(_genecall_resdir_, "cds","{bin}","{bin}.coord.gff"),
+        nucleo = os.path.join(_genecall_resdir_, "cds","{bin}" , "{bin}_cds_nucleotide.fnn"),
+        transl = os.path.join(_genecall_resdir_, "cds","{bin}", "{bin}_translated_cds.faa"),
     input:
-        lambda wildcards: BINS[wildcards.bin],
+        lambda wildcards: _genecall_input_[wildcards.bin],
     params:
         mode = define_mode,
-        cmd = lambda wildcards : "gunzip -c" if BINS[wildcards.bin].endswith(".gz") \
+        cmd = lambda wildcards : "gunzip -c" if _genecall_input_[wildcards.bin].endswith(".gz") \
             else "cat",
     conda:
         os.path.join("envs", "prodigal-2.6.yaml")
     log:
-        os.path.join(RESDIR,"logs","prodigal.{bin}.log")
+        os.path.join(_genecall_resdir_,"logs","prodigal.{bin}.log")
     shell:
         '{params.cmd} {input} | prodigal '
-        '-o {output.tmp} ' 
+        '-o {output.coordinates} ' 
         '-f gff '
         '-d {output.nucleo} '
         '-a {output.transl} '
-        '-p {params.mode}  &> {log} && ' #not consistent with the doc
-        'grep -v "#" {output.tmp} | sed "s/;/	/g" | sed "s/ID=//g"  > {output.coordinates} && '
-        'grep "# Sequence Data" {output.tmp} > {output.sum_f} '
-
+        '-p {params.mode}  &> {log} ' 
+        

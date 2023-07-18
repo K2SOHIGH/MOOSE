@@ -5,7 +5,7 @@ import yaml
 
 from snakemake import logger
 
-print(config)
+
 
 def validate_config():
     if config["checkm_data"] is None or not os.path.isdir(config["checkm_data"]):
@@ -17,81 +17,77 @@ def validate_config():
 validate_config()
 
 
-BINS = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
+_genomes_quality_input_ = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
 
-if not BINS:
+if not _genomes_quality_input_:
     logger.error("No bin provided :(")
     exit(-1)    
 
 # setup : 
-RESDIR = config["output"]
-TMP = config['output'] + "/tmp"
+_genomes_quality_resdir_ = config["output"]
+_genomes_quality_tmpdir_ = config['output'] + "/tmp"
 
-def bins2batches(bins,batch_size):    
+def _checkm_bins2batches_(bins,batch_size):    
     batches = {"batch-{}".format(x//batch_size):list(bins.keys())[x:x+batch_size] for x in range(0,len(bins.keys()),batch_size) if x <= len(bins.keys())}
     return batches
 
-BATCHES = bins2batches(BINS,config["batch_size"])
+_genomes_quality_batches_ = _checkm_bins2batches_(_genomes_quality_input_,config["batch_size"])
 
-logger.info("Number of batches : {}".format(len(BATCHES)) )
+logger.info("Number of batches : {}".format(len(_genomes_quality_batches_)) )
 
-checkm_res = "lineage_wf"
-
-rank = None
-
-taxon = None
 
 if config["taxonomy_wf"]["enable"]:
-    checkm_res = "{}_{}_taxonomy_wf".format(config["taxonomy_wf"]["rank"],config["taxonomy_wf"]["taxon"])
-    rank = config["taxonomy_wf"]["rank"]
-    taxon = config["taxonomy_wf"]["taxon"]
-
-
-
+    _checkm_wf_ = "taxonomy_wf"
+else:
+    _checkm_wf_ = "lineage_wf"
+    
 rule target_checkm_statistics:
     input:
-        expand(os.path.join(RESDIR,"tables","checkM_{table}.tsv"),table=["taxonomy","statistics_full","statistics"]),
+        expand(os.path.join(_genomes_quality_resdir_,"tables","checkM_{table}.tsv"),
+        table=["taxonomy","statistics_full","statistics"]),
     
 rule expand_benchmark:
     output:                
-        RESDIR + "/benchmark.txt"
+        _genomes_quality_resdir_ + "/benchmark.txt"
     input:
-        qa_full = expand(RESDIR + "/benchmarks/qa_full/{batch}.txt",batch=BATCHES.keys()),
-        lineage = expand(RESDIR + "/benchmarks/lineagewf/{batch}.txt",batch=BATCHES.keys()),
+        qa_full = expand(_genomes_quality_resdir_ + "/benchmarks/qa_full/{batch}.txt",
+            batch=_genomes_quality_batches_.keys()),
+        lineage = expand(_genomes_quality_resdir_ + "/benchmarks/lineagewf/{batch}.txt",
+            batch=_genomes_quality_batches_.keys()),
     params:
-        benchmarkdir = RESDIR + "/benchmarks/"
+        benchmarkdir = _genomes_quality_resdir_ + "/benchmarks/"
     shell:
         "head -n +1 {input.lineage[0]} | sed 's/$/\tSTEP/g' >> {output} &&"
         "tail -q -n +2 {input.qa_full} | sed 's/$/\talign/g' >> {output} && "
         "tail -q -n +2 {input.lineage} | sed 's/$/\tidentify/g' >> {output} && "
         "rm -r {params.benchmarkdir}"
 
-
 rule concat_tables:
     output:
-        protected(os.path.join(RESDIR,"tables","checkM_{table}.tsv"))
+        protected(os.path.join(_genomes_quality_resdir_,"tables","checkM_{table}.tsv"))
     input:
-        expand(os.path.join(TMP,"{batch}",checkm_res,"checkM_{{table}}.tsv"),batch=BATCHES.keys())
+        expand(os.path.join(_genomes_quality_tmpdir_,"{batch}",_checkm_wf_,"checkM_{{table}}.tsv"),
+        batch=_genomes_quality_batches_.keys())
     params:
         first = lambda wildcards, input: input[0],      
-        TMP = TMP,
+        _genomes_quality_tmpdir_ = _genomes_quality_tmpdir_,
     shell:
         "head -n 1 {params.first} > {output} && "
-        "tail -q -n +2 {input} >> {output} "#&& rm -rf {params.TMP}"
+        "tail -q -n +2 {input} >> {output} "
 
 rule checkM_taxonomy:
     """ Create an extended taxonomy. """
     output:
-        tsv = os.path.join(TMP, "{batch}", checkm_res ,"checkM_taxonomy.tsv"),
+        tsv = os.path.join(_genomes_quality_tmpdir_, "{batch}", _checkm_wf_ ,"checkM_taxonomy.tsv"),
     input:
-        tsv = os.path.join(TMP, "{batch}", checkm_res ,"checkM_statistics.tsv"),
+        tsv = os.path.join(_genomes_quality_tmpdir_, "{batch}", _checkm_wf_ ,"checkM_statistics.tsv"),
     conda: 
         os.path.join("envs","checkm.yaml")
     params:
         checkm_dir = lambda wildcards, output: os.path.dirname(output.tsv),
         checkm_data = config["checkm_data"],
     log:
-        os.path.join(RESDIR, 'logs', "{batch}", checkm_res , "taxonomy.log")
+        os.path.join(_genomes_quality_resdir_, 'logs', "{batch}", "taxonomy.log")
     shell:
         "echo \"{params.checkm_data}\" | checkm data setRoot {params.checkm_data} &> {log}; "
         "checkm tree_qa "
@@ -108,9 +104,9 @@ rule checkM_qa_full:
 
     """
     output:
-        tsv = os.path.join(TMP,"{batch}",checkm_res , "checkM_statistics_full.tsv"),
+        tsv = os.path.join(_genomes_quality_tmpdir_,"{batch}", _checkm_wf_ , "checkM_statistics_full.tsv"),
     input:
-        tsv = os.path.join(TMP, "{batch}",checkm_res , "checkM_statistics.tsv"),
+        tsv = os.path.join(_genomes_quality_tmpdir_, "{batch}", _checkm_wf_ , "checkM_statistics.tsv"),
     conda: 
         os.path.join("envs","checkm.yaml")
     threads: 
@@ -118,11 +114,11 @@ rule checkM_qa_full:
     params:
         checkm_dir = lambda wildcards, output: os.path.dirname(output.tsv),
         checkm_data = config["checkm_data"],
-        markerfile =  lambda wildcards, output: os.path.dirname(output.tsv) + "lineage.ms",
+        markerfile =  lambda wildcards, output: os.path.dirname(output.tsv) + "/lineage.ms",
     log:
-        os.path.join(RESDIR, 'logs', "{batch}", checkm_res , "stats_full.log")
+        os.path.join(_genomes_quality_resdir_, 'logs', "{batch}", "stats_full.log")
     benchmark:
-        RESDIR + "/benchmarks/qa_full/{batch}.txt"    
+        _genomes_quality_resdir_ + "/benchmarks/qa_full/{batch}.txt"    
     shell:
         "echo \"{params.checkm_data}\" | checkm data setRoot {params.checkm_data} &>> {log};"
         "checkm qa "
@@ -135,9 +131,12 @@ rule checkM_qa_full:
         "&>> {log} "
 
 
-def get_bins(wildcards):
-    bins = expand(os.path.join(TMP,"Bins",wildcards.batch,"{bin}.fna"), bin=  BATCHES[wildcards.batch],)
-    return bins
+# def get_bins(wildcards):
+#     bins = expand(os.path.join(_genomes_quality_tmpdir_,"Bins",wildcards.batch,"{bin}.fna"), bin=  _genomes_quality_batches_[wildcards.batch],)
+#     return bins
+def get_extension_from_file(wildcards,input):
+    with open(str(input)) as f:
+        return "."+os.path.basename(f.read().strip()).split('.')[-1]
 
 
 rule checkM_taxonomy_wf:
@@ -151,73 +150,77 @@ rule checkM_taxonomy_wf:
 
     """
     output:
-        tsv = os.path.join(TMP, "{batch}","%s_%s_taxonomy_wf" % (rank,taxon), "checkM_statistics.tsv"),
+        tsv = os.path.join(
+            _genomes_quality_tmpdir_, 
+            "{batch}", 
+            'taxonomy_wf' , 
+            "checkM_statistics.tsv"),
     input:
         # Function that returns the locations of genomes associated with {batch}        
-        get_bins,
+        os.path.join(_genomes_quality_tmpdir_, "{batch}", 'input_file.tsv'),
     conda: 
         os.path.join("envs","checkm.yaml")
     resources:
         mem= 16000 if config["low_memory"] else 50000,
         mem_mb= 20000 if config["low_memory"] else 70000,
-        # time= 24:00:00, # time limit for each job
         nodes= 1,
-        #cpus_per_task = 2 if config["low_memory"] else  5 ,    
         cpus_per_task = 10 if config["low_memory"] else  15 ,              
     threads: 
         10
     params:            
         checkm_dir = lambda wildcards, output: os.path.dirname(output.tsv),
-        checkm_data = config["checkm_data"],
-        batch_dir = lambda wildcards, input: os.path.dirname(input[0]),
-        rank = rank,
-        taxon = taxon,
-        tmp = "--TMP %s" % TMP if TMP else "",
+        checkm_data = config["checkm_data"],        
+        rank = config["taxonomy_wf"]["rank"],
+        taxon = config["taxonomy_wf"]["taxon"],
+        low_memory = "--reduced_tree" if config["low_memory"] else "",
+        tmp = "--tmp %s" % _genomes_quality_tmpdir_ if _genomes_quality_tmpdir_ else "",
+        ext = lambda wildcards,input: get_extension_from_file(wildcards,input),
     log:
-        os.path.join(RESDIR, 'logs', "{batch}", checkm_res , "taxonomy_wf.log")
+        os.path.join(_genomes_quality_resdir_, 'logs', "{batch}", "taxonomy_wf.log")
     shell:
         "echo \"{params.checkm_data}\" export LC_ALL=C ; checkm data setRoot {params.checkm_data} &>> {log}; "
         "checkm taxonomy_wf "
         "{params.rank} "
         "{params.taxon} "
-        "{params.batch_dir} " # (input) directory containing the bin files
+        "{params.low_memory} "
+        "{input} " # (input) directory containing the bin files
         "{params.checkm_dir} "          # (output) directory where to store the results
         "--tab_table "          # output as a tab-separated file
         "-f {output.tsv} "      # filename for the output
         "{params.tmp} "
         "-t {threads} "
-        "-x fna "             # extension of the bin files
+        "-x {params.ext} "             # extension of the bin files
         "&>> {log} "
+
 
 rule checkM_lineage_wf:
     """ Main checkM rule.
         Compute CheckM on a given batch of bins.
     """
     output:
-        tsv = os.path.join(TMP, "{batch}","lineage_wf","checkM_statistics.tsv"),
-    input:
-        # Function that returns the locations of genomes associated with {batch}        
-        get_bins,
+        tsv = os.path.join(_genomes_quality_tmpdir_, "{batch}",'lineage_wf',"checkM_statistics.tsv"),
+    input:        
+        #get_bins,
+        os.path.join(_genomes_quality_tmpdir_, "{batch}", 'input_file.tsv'),
     conda: 
         os.path.join("envs","checkm.yaml")
     resources:
         mem= 16000 if config["low_memory"] else 50000,
         mem_mb= 20000 if config["low_memory"] else 70000,
-        # time= 24:00:00, # time limit for each job
         nodes= 1,
         cpus_per_task = 10 if config["low_memory"] else  15 ,           
     threads: 
         10
     params:            
         checkm_dir = lambda wildcards, output: os.path.dirname(output.tsv),
-        checkm_data = config["checkm_data"],
-        batch_dir = lambda wildcards, input: os.path.dirname(input[0]),
+        checkm_data = config["checkm_data"],        
         low_memory = "--reduced_tree" if config["low_memory"] else "",
-        tmp = "--TMP %s" % TMP if TMP else "",
+        tmp = "--tmp %s" % _genomes_quality_tmpdir_ if _genomes_quality_tmpdir_ else "",
+        ext = lambda wildcards,input: get_extension_from_file(wildcards,input),
     log:
-        os.path.join(RESDIR, 'logs', "{batch}", checkm_res , "lineage_wf.log")
+        os.path.join(_genomes_quality_resdir_, 'logs', "{batch}", "lineage_wf.log")
     benchmark:
-        RESDIR + "/benchmarks/lineagewf/{batch}.txt"    
+        _genomes_quality_resdir_ + "/benchmarks/lineagewf/{batch}.txt"    
     shell:
         "echo {params.checkm_data}; export LC_ALL=C ; "
         "checkm data setRoot {params.checkm_data} &>> {log}; "
@@ -227,23 +230,27 @@ rule checkM_lineage_wf:
         "-t {threads} "
         "{params.tmp} "
         "{params.low_memory} "
-        "-x fna "             # extension of the bin files
-        "{params.batch_dir}/ " # (input) directory containing the bin files
+        "-x {params.ext} "             # extension of the bin files
+        "{input} "  #"{params.batch_dir}/ " # (input) directory containing the bin files
         "{params.checkm_dir} "  # (output) directory where to store the results
         "&>> {log} "
 
-rule gunzip_bins_into_batches:
-    """ Gunzip a `fasta.gz` into the appropriate batch directory. """
-    output:
-        temp(os.path.join(TMP, 'Bins', '{batch}', '{bin}.fna'))
-    input:
-        bins = lambda wildcards: BINS[wildcards.bin]
-    threads: 
-        1 
-    shell:
-        'if [[ {input.bins} == *.gz ]] ; then '
-        'gunzip -c {input.bins}  > {output} ; '
-        'else '
-        'cat {input.bins}  > {output} ; '
-        'fi '        
 
+rule bins_to_batches:
+    output:
+        os.path.join(_genomes_quality_tmpdir_, "{batch}", 'input_file.tsv'),
+    params:
+        batch = _genomes_quality_batches_ ,
+        genomes = _genomes_quality_input_,
+        cds = config['cds'] if config['cds'] else {},
+    run:
+        keys = params.batch[str(wildcards.batch)]      
+        with open(str(output),'w') as fh:
+            for label in keys:
+                cds = ""     
+                genome_path = params.genomes[label]           
+                if label in params.cds:
+                    cds = params.cds[label]
+                fh.write('{}\t{}\t{}\n'.format(
+                    label,genome_path,cds
+                ))

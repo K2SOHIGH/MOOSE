@@ -1,8 +1,9 @@
 input : ""
 input.conf:
   required: True
-  help: 'yaml file containg path to genomes (genome_label: genome_path)' 
+  help: 'yaml file with path to genomes (genome_label: genome_path)' 
   type: 'str'
+
 
 output : moose-res/genomes/quality
 output.conf:
@@ -15,10 +16,15 @@ checkm_data.conf:
   help: 'path to checkm datas'
   type: 'str'
 
+cds: ""
+cds.conf:
+  help: yaml file with path to cds (amino acid fasta format)  with same genome label as input.
+
+
 taxonomy_wf:
   enable: FALSE
   rank : ""
   taxon : ""
   
 batch_size : 1000
-low_memory : True
+low_memory : False

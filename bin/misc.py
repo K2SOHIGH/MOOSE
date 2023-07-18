@@ -1,6 +1,7 @@
 import sys
 import click
 import yaml
+import re
 from pathlib import Path
 from moose.utils  import utils
 from moose.utils.log import logger
@@ -13,9 +14,8 @@ from moose.utils.log import logger
 
 @click.option(
       '-o','--output',
-      default = sys.stdout,
-      help = 'output yaml file',
-      type = str,
+      type = str, default='-',
+      help = 'output yaml file',      
 )
 
 @click.option(
@@ -45,17 +45,22 @@ def make_input_file(output,dir,extension,pattern):
     files = {}
     if not pattern:
         pattern=""
-    else:
-        pattern="*"+pattern
-    for p in path.rglob('{}*{}'.format(pattern,extension)):
-                files[p.name.replace(extension,'')] = str(p.absolute())
+    logger.debug('root dir : {}'.format(path))
     
-    if isinstance(output,str):
-          p = Path(output).parent
-          p.mkdir(parents=True, exist_ok=True)
-          output = open(str(output),'w')
-
-    yaml.dump(files, output)
+    for p in path.rglob("*"):
+        a = re.search('.*{}.*{}'.format(pattern,extension),str(p.name))
+        if a is not None:            
+            files[p.name.replace(extension,'')] = str(p.absolute())
+    
+    
+    if output != '-':
+        p = Path(output).parent
+        p.mkdir(parents=True, exist_ok=True)
+        output = open(str(output),'w')
+        yaml.dump(files, output)
+    else:
+        yaml.dump(files, sys.stdout)
+    
     
 
 @click.group()

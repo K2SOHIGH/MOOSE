@@ -1,0 +1,17 @@
+input: null
+input.conf:
+  required: True
+  help: 'yaml file containg path to genomes (genome_label: genome_path)' 
+  type: 'str'
+
+two_way: False
+two_way.conf:
+  help: If set perform full pairwise comparison (n*n) else compute only one comparison per pairs of genomes (n*(n-1)/2). Note that A vs B might be slightly different from B vs A.
+
+output: moose-res/genomes/ani
+output.conf:
+  help: Output directory
+
+kmer: 16
+fraglen: 3000
+minfraction: 0.2

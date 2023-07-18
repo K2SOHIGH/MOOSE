@@ -5,36 +5,8 @@ import yaml
 
 from snakemake import logger
 
-
-# input for dRep -> file with one genome per line  (must be gunzip)
-
-
-GENOMES = yaml.load(open(config['input']),Loader=yaml.SafeLoader)
-RESDIR = config["output"]
-EXTENSION = config['extension']
-PATTERN = config['pattern']
-DREPOUT= os.path.join(RESDIR,"tmp")
-
-
-rule dRep_summary_table:
-    output:
-        Path(RESDIR) / 'dRep.tsv'
-    input:
-        wdb = Path(DREPOUT) / 'data_tables' / 'Wdb.csv', #wining_genome cluster score
-        cdb = Path(DREPOUT) / 'data_tables' / 'Cdb.csv', #genome Scluster, threshold, clumet, algo_comp, Pcluster
-    run:
-        """merge wdb and cdb in a unique table"""
-        import pandas as pd
-        cdb = pd.read_csv("Cdb.csv",sep=',',index_col=0)
-        wdb = pd.read_csv("Wdb.csv",sep=',',index_col=0)
-        wdb['winning'] = True
-        df = pd.concat([cdb,wdb[['score','winning']]],axis=1)
-        df.winning.fillna(False,inplace=True)
-        df.to_csv(str(output),sep='\t',header=True,index=True)
-
-rule dRep:
-    """
-    DREPOUT
+"""
+    _dereplicat_tmpdir_
     ├── data
     │   ├── Clustering_files
     │   ├── MASH_files
@@ -47,47 +19,230 @@ rule dRep:
     ├── dereplicated_genomes
     ├── figures
     └── log
-    """
+"""
+
+# input for dRep -> file with one genome per line  (must be gunzip)
+
+
+_dereplicat_genomes_ = yaml.load(open(config['input']),Loader=yaml.SafeLoader)
+_dereplicat_resdir_  = config["output"]
+_dereplicat_tmpdir_  = os.path.join(_dereplicat_resdir_,"tmp")
+
+
+rule dRep_summary_table:
     output:
-        # directory( str(Path(DREPOUT) / "dereplicated_genomes" )),
-        Path(DREPOUT) / "data_tables" / "Wdb.csv",
-        Path(DREPOUT) / "data_tables" / "Cdb.csv",
+        Path(_dereplicat_resdir_) / 'dRep.tsv'
     input:
-        Path(RESDIR) / "path_to_genomes.txt",
+        mash_cdb = Path(_dereplicat_tmpdir_) / "mash_first_clustering" / "data_tables" / "Cdb.csv",
+        wdb = Path(_dereplicat_resdir_) / 'Wdb.tsv',
+        cdb = Path(_dereplicat_resdir_) / 'Cdb.tsv', #genome Scluster, threshold, clumet, algo_comp, Pcluster
+    run:
+        """merge wdb and cdb in a unique table"""
+        import pandas as pd
+        import numpy as np
+        def parse_primary_clustering(f):
+            df = pd.read_csv(f,sep=',',index_col=1)
+            singletons = df.groupby('primary_cluster').count().secondary_cluster==1
+            singletons = [i for i,j in singletons.items() if j]
+            df['is_singleton'] = df.apply(lambda x : True if x.primary_cluster in singletons else False, axis=1)
+            df.pop('secondary_cluster')
+            df.columns = ['mash_I_'+i for i in df.columns]
+            return df
+
+        def parse_secondary_clustering(Cdb,Wdb):
+            wdb_df = pd.read_csv(Wdb,sep='\t',header=0,index_col=0)
+            wdb_df['winner'] = True
+            cdb_df = pd.read_csv(Cdb,sep='\t',header=0,index_col=0) 
+            cdb_df.pop('primary_cluster')
+            cdb_df.columns = ['fastANI_II_'+i for i in cdb_df.columns]
+            df = pd.concat([ cdb_df, wdb_df[['score','winner']] ],axis=1)
+            df.winner.fillna(False,inplace=True)
+            return df
+
+        def set_cluster_label(x):
+            prim =  str(x.mash_I_primary_cluster)
+            sec  =  x.fastANI_II_secondary_cluster
+            if isinstance(sec,str):
+                sec = str(sec).split('_')[-1]
+            else:
+                sec = 'S'
+            return prim +'_'+sec
+
+        def merge_primary_and_secondary(prim,sec):
+            df = pd.concat([prim,sec],axis=1)
+            df.winner.fillna(True,inplace=True)
+            df['cluster'] = df.apply(lambda x : set_cluster_label(x),axis=1)
+            return df
+
+        prim = parse_primary_clustering(str(input.mash_cdb))
+        seco = parse_secondary_clustering(str(input.cdb),str(input.wdb))
+        df = merge_primary_and_secondary(prim,seco)
+        df.to_csv(str(output),sep='\t',header=True,index=True)
+
+
+def aggregate_drep_first_clustering_checkpoint(wildcards):
+    mash_cluster_dir = str(checkpoints.dRep_Primary_Cluster.get(**wildcards).output)    
+    return expand(
+        Path(_dereplicat_tmpdir_) / "fastani_secondary_clustering" / "mash_cluster_{cluster}" / "data_tables" / "{{table}}.csv",
+        cluster = glob_wildcards(os.path.join(str(mash_cluster_dir), "mash_cluster_{cluster}.txt")).cluster )
+
+rule dRep_expand_secondary_clustering:
+    output:
+        Path(_dereplicat_resdir_) / '{table}.tsv',
+    input:
+        aggregate_drep_first_clustering_checkpoint,
+    run:
+        import pandas as pd
+        dfs = []
+        for f in input:
+            dfs.append(pd.read_csv(str(f),sep=',',header=0,index_col=0))
+        pd.concat(dfs).to_csv(str(output),sep='\t',header=True,index=True)
+
+rule dRep_secondary_clustering:
+    output:
+        Path(_dereplicat_tmpdir_) / "fastani_secondary_clustering" / "mash_cluster_{cluster}" / "data_tables" / "Wdb.csv",
+        Path(_dereplicat_tmpdir_) / "fastani_secondary_clustering" / "mash_cluster_{cluster}" / "data_tables" / "Cdb.csv",        
+    input:
+        genomes = Path(_dereplicat_tmpdir_) / "mash_first_clustering" / "clusters" / "mash_cluster_{cluster}.txt",
+        quality = Path(_dereplicat_resdir_) / "quality_info.csv",
     params:
-        minlen = config['length'],
-        mincomp = config['completness'],
-        mincom = config['contamination'],
-        ignore_qual = "--ignoreGenomeQuality" if config['ignore_quality'] else "",
-        genome_qual = "--genomeInfo" if config['qual_info'] else "",
-        primary_ani = config['primary_ani'],
+        genome_qual = lambda wildcards,input: "" if Path(str(input.quality)).stat().st_size == 0 else "--genomeInfo {}".format(str(input.quality)),
         secondary_ani = config['secondary_ani'],
         cov_threshold = config['coverage'],
-        multiround = "--multiround_primary_clustering" if config['multiround'] else "",
+        #outdir =  lambda wildcards: Path(_dereplicat_tmpdir_) / "fastani_secondary_clustering" / "mash_cluster_{}".format(wildcards.cluster),
+        outdir =  lambda wildcards,output: "/".join(str(output[0]).split('/')[:-2])
+    conda:
+        'envs/drep.3.4.3.yaml'        
     shell:
-        "dRep dereplicate {output}  "
-        "-g {input} "
+        "dRep dereplicate {params.outdir}  "
+        "--SkipMash                 "        
+        "-g {input.genomes}         "
+        "{params.genome_qual}       "
+        "-sa {params.secondary_ani} "
+        "-nc {params.cov_threshold} "
+
+
+checkpoint dRep_Primary_Cluster:
+    output:
+        directory(
+            Path(_dereplicat_tmpdir_) / "mash_first_clustering" / "clusters"
+        )
+        # files : /mash_cluster_{cluster}.txt
+    input:
+        cdb = Path(_dereplicat_tmpdir_) / "mash_first_clustering" / "data_tables" / "Cdb.csv",
+        paths = Path(_dereplicat_resdir_) / "path_to_genomes.txt",
+    params:
+        singletons = Path(_dereplicat_tmpdir_) / "mash_first_clustering" / 'singleton.txt',
+    run:
+        import pandas as pd
+        genome_path = {}
+        with open(str(input.paths)) as fh:
+            for l in fh.readlines():
+                p = Path(l.strip())
+                genome_path[p.name] = str(p)
+        cdb = pd.read_csv( str(input.cdb), sep=',', header=0, index_col=0 )
+        cluster_dict = {}
+        for cluster, row in cdb.iterrows():
+            if cluster not in cluster_dict:
+                cluster_dict[cluster] = []
+            cluster_dict[cluster].append(genome_path[row.genome])
+
+        Path(str(output)).mkdir(parents=True, exist_ok=True)
+        for cluster, genomes in cluster_dict.items():
+            if len(genomes) > 1:
+                outfile = Path(str(output)) / 'mash_cluster_{}.txt'.format(cluster)
+                with open(outfile,'w') as fh:
+                    fh.write("\n".join(genomes))
+            else:
+                with open(str(params.singletons),'a') as fh:    
+                    fh.write("\n".join(genomes))
+
+
+
+
+
+rule dRep_Primary_Clustering:
+    """
+    filter genomes and first clustering
+    """
+    output:      
+        Path(_dereplicat_tmpdir_) / "mash_first_clustering" / "data_tables" / "Cdb.csv",
+    input:
+        genomes = Path(_dereplicat_resdir_) / "path_to_genomes.txt",
+        quality = Path(_dereplicat_resdir_) / "quality_info.csv",
+    params:
+        outdir = Path(_dereplicat_tmpdir_) / "mash_first_clustering",
+        minlen = config['length'],
+        mincomp = config['completness'],
+        mincont = config['contamination'],
+        ignore_qual = "--ignoreGenomeQuality" if config['ignore_quality'] else "",
+        genome_qual = lambda wildcards,input: "" if Path(str(input.quality)).stat().st_size == 0 else "--genomeInfo {}".format(str(input.quality)),
+        primary_ani = config['primary_ani'],        
+        cov_threshold = config['coverage'],
+        multiround = "--multiround_primary_clustering" if config['multiround'] else "",        
+    conda:
+        'envs/drep.3.4.3.yaml'
+    shell:
+        "dRep dereplicate {params.outdir}  "
+        "-g {input.genomes} "
         "-l {params.minlen}         "
         "-comp {params.mincomp}     "
         "-con {params.mincont}      "
         "{params.ignore_qual}       "
         "{params.genome_qual}       "
-        "-pa (params.primary_ani)   "
-        "-sa (params.secondary_ani) "
+        "-pa {params.primary_ani}   "        
         "-nc {params.cov_threshold} "
-        "{params.multiround}        " 
+        "--SkipSecondary            "
+        "{params.multiround}        "     
+
+rule dRep_quality_file:
+    output:
+        Path(_dereplicat_resdir_) / "quality_info.csv",
+    params:
+        quality_file = config['qual_info'] if config['qual_info'] else None,
+        genomes = _dereplicat_genomes_,
+    run:
+        import pandas as pd        
+        with open(str(output),'w') as f:
+            if params.quality_file:
+                quality_df = pd.read_csv(str(params.quality_file),sep='\t',header=0,index_col=0)    
+                if 'Completeness' not in quality_df.columns or 'Contamination' not in quality_df.columns:
+                    raise KeyError('Missing Completeness or Contamination column in qual_info file.')
+                path_to_genome = [p for k,p in params.genomes.items()]
+                
+                valid_genome_qual = []
+                for i in quality_df.index:
+                    for p in path_to_genome:
+                        if i in p:
+                            label = str(Path(p).name)
+                            comp  = quality_df.at[i,'Completeness']
+                            cont  = quality_df.at[i,'Contamination']                            
+                            valid_genome_qual.append(
+                                (label,comp,cont)
+                                )
+                            continue
+                    continue
+                if len(valid_genome_qual) != len(path_to_genome):
+                    raise ValueError('Quality info is missing for some genomes : {}'.format(', '.join(valid_genome_qual)))
+                else:
+                    f.write('genome,completeness,contamination\n')
+                    for e in valid_genome_qual:
+                        f.write('{},{},{}\n'.format(*e))
+
+                
         
+
+
+
 rule dRep_input_file:
     output:
-        temp(Path(RESDIR) / "path_to_genomes.txt"),
+        Path(_dereplicat_resdir_) / "path_to_genomes.txt",
     params:
-        genomes = GENOMES,
+        genomes = _dereplicat_genomes_,
     run:
         with open(str(output),'w') as fh:
-            for k,p in params.genomes:
+            for k,p in params.genomes.items():
                 fh.write(p+"\n")
-
-
 
 # genomes info file must have :
 # genome, completeness, contamination where genome is the basename of the genome file

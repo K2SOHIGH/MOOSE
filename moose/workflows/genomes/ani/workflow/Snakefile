@@ -1,0 +1,129 @@
+configfile: "config/config.yaml"
+
+import os
+import glob
+import yaml
+from snakemake import logger
+
+_ani_genome_input_ = yaml.load(open(config['input']),Loader=yaml.SafeLoader)
+_ani_resdir_ = config['output']
+
+if not _ani_genome_input_:
+    logger.error("No genome specified.")
+    exit(-1)
+
+def _ani_compute_pair_(g,pop=False):
+    l = list( g.keys() )
+    combi = {}
+    for p1 in g:
+        if not pop:
+            l.remove(p1)
+        if l:
+            combi[p1] = l.copy()
+    return combi
+
+_ani_combinations_ = _ani_compute_pair_(_ani_genome_input_,config['two_way'])
+
+rule FASTANI_TARGET:
+    input:
+        Path(_ani_resdir_) / 'all-vs-all-ani.tsv',
+        Path(_ani_resdir_) / 'ani.tsv',
+
+rule FASTANI_CONCAT:
+    output:
+        Path(_ani_resdir_) / 'ani.tsv'
+    input:
+        expand(
+            Path(_ani_resdir_) / 'tmp' / '{query}.ani.tsv', 
+            query = _ani_combinations_,
+        )
+    run:
+        import pandas as pd
+        dfs=[]
+        for tab in input:
+            try:
+                dfs.append(pd.read_csv(str(tab),sep='\t',header=None))
+            except pd.errors.EmptyDataError:
+                continue
+        
+        columns = ["query_genome", "reference_genome", "ANI", 
+            "count_reciprocal_fragments", "total_query_fragments"]
+        ani_df = pd.concat(dfs)
+        ani_df.columns = columns
+        ani_df['query_alignment_fraction'] = ani_df.count_reciprocal_fragments/ani_df.total_query_fragments*100
+        ani_df['reference_genome'] = ani_df.apply(lambda x: x.reference_genome.split('/')[-1], axis = 1 )
+        print(ani_df)
+        ani_df.to_csv(str(output) , sep='\t', header=True,index=False)
+
+
+rule FASTANI_MANY_TO_MANY:
+    output:
+        Path(_ani_resdir_) / 'all-vs-all-ani.tsv'
+    input:
+        Path(_ani_resdir_) / 'input.txt'
+    params:
+        kmer=config['kmer'],
+        frag=config['fraglen'],
+        frac=config['minfraction'],
+    benchmark:
+        Path(_ani_resdir_) / 'benchmarks' / 'many_to_many.txt',        
+    conda:
+        'envs/fastani.yaml'
+    shell:
+        "fastANI --ql {input} "
+        "--rl {input} "
+        "-k {params.kmer} "
+        "--fragLen {params.frag} "
+        "--minFraction {params.frac} "
+        "-o {output} "
+
+
+rule FASTANI_expand:
+    output:
+        Path(_ani_resdir_) / 'input.txt'
+    input:
+        config['input']
+    shell:
+        "cat {input} | cut -d ' ' -f 2 > {output}"
+        
+
+rule FASTANI_ONE_TO_MANY:
+    output:
+        temp(Path(_ani_resdir_) / 'tmp' / '{query}.ani.tsv')
+    input:
+        query =  lambda wildcards: _ani_genome_input_[wildcards.query],
+        refs  =  Path(_ani_resdir_) / 'tmp' / '{query}_references.txt'
+    params:
+        kmer=config['kmer'],
+        frag=config['fraglen'],
+        frac=config['minfraction'],
+    benchmark:
+        Path(_ani_resdir_) / 'benchmarks' / '{query}_to_many.txt',        
+    conda:
+        'envs/fastani.yaml'
+    shell:
+        "fastANI -q {input.query} "
+        "--rl {input.refs} "
+        "-k {params.kmer} "
+        "--fragLen {params.frag} "
+        "--minFraction {params.frac} "
+        "-o {output} "
+
+
+def get_genomes(wildcards):
+    ref_keys = _ani_combinations_[wildcards.query]
+    return [ _ani_genome_input_[r]
+        for r in ref_keys ]
+
+rule FASTANI_QUERY_REF_FILES:
+    output:
+        temp(Path(_ani_resdir_) / 'tmp' / '{query}_references.txt')
+    params:
+        genomes = lambda wildcards: get_genomes(wildcards),
+    run:
+        with open(str(output), 'w') as fh:
+            for ref in params.genomes:
+                fh.write(
+                    ref+"\n"
+                    )
+        

@@ -12,11 +12,8 @@ checkm_stats: null
 checkm_stats.conf:
   help: 'CheckM statistics'
 
-mode: 'normal'
+mode: 'single'
 mode.conf:
   choices:    
-    - 'train'
-    - 'anon'
     - 'meta'
-    - 'single'
   help: 'Prodigal mode setting.'

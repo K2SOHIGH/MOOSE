@@ -1,0 +1,7 @@
+name: dRep
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - drep=3.4.3

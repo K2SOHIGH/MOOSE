@@ -45,18 +45,14 @@ rule CAAI_EXPAND_CALCULATE:
         os.path.join(RESDIR, "aai.tsv"),
     input:
         expand(
-            os.path.join(RESDIR, 'tmp', "aai", '{query}.tsv' ), query = combinations,
+            os.path.join(RESDIR, "aais", '{query}.tsv' ), query = combinations,
         )
     run:
         import pandas as pd
         dfs = [pd.read_csv(str(f),sep='\t',header=0,index_col=0) for f in input]
-        pd.concat(dfs).to_csv(str(output) , sep='\t',index=True)
+        pd.concat(dfs).to_csv(str(output) , sep='\t',index=False)
 
 
-def resolve_calculate_input(wildcards):
-        return expand(
-            os.path.join(RESDIR, 'tmp', "aai", wildcards.query+'_vs_{ref}.tsv'), ref = combinations[wildcards.query]
-        )
 
 def resolve_query(wildcards):
     if config['cds']:
@@ -71,15 +67,15 @@ def resolve_target(wildcards):
 
 rule CAAI_CALCULATE:
     output:
-        os.path.join(RESDIR, 'tmp', "aai", '{query}.tsv' ),
+        os.path.join(RESDIR, "aais", '{query}.tsv' ),
     input:
-        i  =  resolve_query,
-        j  =  resolve_target,
+        i  =  resolve_query,        
     params:
-        d = False,
-        e = "",
-        p = "",
-        t = "",
+        j  =  lambda wildcards: resolve_target(wildcards),
+        d = False, # directory
+        e = "", # extension
+        p = "", # pattern
+        t = "", #os.path.join(RESDIR, 'tmp', "{query}") , # tmp directory
         aln_mode = 2,
         id = config['aai_id_threshold'],
         cov= config['aai_cov_threshold'],

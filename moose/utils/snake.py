@@ -11,7 +11,7 @@ class Snake:
     def __init__(self,workflow):
         self.workflow = str(Path(workflow).absolute())
         self.name = str(Path(workflow).name)
-        self.configfile = self.get_configfile()
+        self.configfile = str(self.get_configfile())
         self.config = self.load_default_config()
         # self.default_snakargs = ["--rerun-triggers", "mtime", "--use-conda" ,"--jobs" , ]
 

@@ -8,7 +8,7 @@ import tempfile
 import logging
 from functools import wraps
 import gzip
-
+import pandas as pd
 
 def timeit(func):
     @wraps(func)
@@ -199,7 +199,7 @@ def get_args():
 def get_snakargs():
     args = argparse.Namespace()
     args.i = str(globals()['snakemake'].input.i)
-    args.j = ",".join([str(i) for i in globals()['snakemake'].input.j])
+    args.j = ",".join([str(i) for i in globals()['snakemake'].params.j])
     args.d = globals()['snakemake'].params.d
     args.e = globals()['snakemake'].params.e
     args.p = globals()['snakemake'].params.p
@@ -275,6 +275,7 @@ def main():
                 temp_dir = tempfile.TemporaryDirectory()
                 tmpdirname = temp_dir.name
                 flush = True          
+                os.makedirs(tmpdirname + '/tmp' , exist_ok=True)
             
             tmpres = os.path.join(tmpdirname,'res.json')
             if os.path.exists(tmpres):
@@ -291,6 +292,9 @@ def main():
                 j, 
                 tmpdirname  + "/targetdb"
                 )    
+            print(os.path.exists(tmpdirname  + "/querydb"))
+            print(os.path.exists(tmpdirname  + "/targetdb"))
+            
             # search query vs target
             search(
                 tmpdirname + "/querydb",

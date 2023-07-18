@@ -64,15 +64,15 @@ def run(_,ctx):
         "Configuration: \n"+yaml.dump(config, default_flow_style=False),
     )
         
-    module.config.update(config)    
-
-    configdir = Path(ctx.obj.get('config_dir'))
+    module.config.update(config)        
+    moosedir = Path(ctx.obj.get('moose_dir'))
+    configdir = moosedir / "configs" #Path(ctx.obj.get('config_dir'))
     if not configdir:
         configdir = Path().absolute()
     configfile = str(configdir / "{}.config.yaml".format(ctx.info_name)) 
     params = ["--configfile" , configfile]
 
-    conda_prefix = ctx.obj.get('conda_dir')
+    conda_prefix = str(moosedir / "condas") #ctx.obj.get('conda_dir')
     if conda_prefix:
         params += ['--conda-prefix', conda_prefix]
 
@@ -80,7 +80,7 @@ def run(_,ctx):
     snakargs.extend(params)
     
     logging.info(ctx.info_name.upper() + " - start ")
-    module.dump_config(configfile)
+    module.dump_config(configfile)    
     module.run(snakargs)   
     logging.info(ctx.info_name.upper() + " - end ")
 
