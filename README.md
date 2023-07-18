@@ -1,11 +1,14 @@
 # MOOSE - MetaOmics and Omics SuitE
 
+<p align="center">
+  <img src="moose.png">
+</p>
+
 
 Moose is basically a bunch of wrapper/tools to process one or more data types from the OMICs world through classical workflows in (meta)omics such as assembly, binning, QCs , genecall, etc...
-Most of those wrappers/tools rely on [snakemake](https://snakemake.readthedocs.io/en/stable/) and can be easily deployed on a cluster.
+Most of those wrappers/tools rely on dedicated tools. moose rely a lot on [snakemake](https://snakemake.readthedocs.io/en/stable/) and can be easily deployed on a cluster.
 
 # Summary
-
 **Miscellaneous**:
 - [set-default]() - Set default parameters for global moose options. 
 - [make-input-file]() - Create a yaml file from directory and subdirectories.
