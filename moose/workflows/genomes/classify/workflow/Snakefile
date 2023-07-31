@@ -47,41 +47,31 @@ GTDBSUMMARYCOLS = ['user_genome',
  'warnings']
 
 
-
 rule gm_target_gtdbtk:
     output:
         touch(temp(os.path.join(_genome_classify_resdir_,"gtdbtk.done")))
     input:
         os.path.join(_genome_classify_resdir_, "gtdbtk.ar53.bac120.summary.clean.tsv"),
     
-rule gm_GTDBTK_clean_table:
+rule gm_concatenate_archaea_and_bacteria_results:
     output:
-        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.clean.tsv")
+        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.clean.tsv"),
     input:
-        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.tsv")
+        bac = os.path.join(_genome_classify_resdir_ , "gtdbtk.bac120.summary.tsv"),
+        ar = os.path.join(_genome_classify_resdir_ ,  "gtdbtk.ar53.summary.tsv"),                         
     run:
         import os
         import pandas as pd
-        if os.stat(str(input)).st_size != 0:
-            df = pd.read_csv(str(input),sep="\t",header=0,index_col=None)        
-            df.user_genome = df.user_genome.str.replace("USER_","")
-            df.to_csv(str(output),sep="\t",header=True,index=False)
-        open(str(output),'w').close()
-
-
-rule gm_concatenate_archaea_and_bacteria_results:
-    output:
-        os.path.join(_genome_classify_resdir_ , "gtdbtk.ar53.bac120.summary.tsv")                                            
-    input:
-        bac = os.path.join(_genome_classify_resdir_ , "gtdbtk.bac120.summary.tsv"),
-                        #"classify", 
-        ar = os.path.join(_genome_classify_resdir_ ,  "gtdbtk.ar53.summary.tsv"), 
-                        #"classify", 
-    shell:
-        "cat {input} | grep -m 1 user_genome > {output} && " # grep header from input files, either input.bac and input.ar can be empty
-        "tail -q -n +2 {input} >> {output} "
-
-
+        dfs = []
+        for fpath in input:
+            if os.path.isfile(str(fpath)) and os.path.getsize(str(fpath)) > 0:
+                dfs.append(pd.read_csv(str(fpath),sep='\t',header=0))
+        df = pd.DataFrame()
+        if dfs:
+            df = pd.concat([dfs],axis=0)
+            df.user_genome = df.user_genome.str.replace("USER_","")    
+        df.to_csv(str(output),sep="\t",header=True,index=False)
+        
 
 rule gm_gtdbtk_classify_wf:
     output:
