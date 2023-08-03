@@ -232,13 +232,9 @@ rule dRep_quality_file:
                 else:
                     f.write('genome,completeness,contamination\n')
                     for e in valid_genome_qual:
-                        f.write('{},{},{}\n'.format(*e))
-                raise NameError
+                        f.write('{},{},{}\n'.format(*e))                
                 
-        
-
-
-
+    
 rule dRep_input_file:
     output:
         Path(_dereplicat_resdir_) / "path_to_genomes.txt",
@@ -249,7 +245,6 @@ rule dRep_input_file:
             for k,p in params.genomes.items():
                 fh.write(p+"\n")
 
-# genomes info file must have :
-# genome, completeness, contamination where genome is the basename of the genome file
-
-
+# Quality info file must have :
+# genome, completeness, contamination where genome is 
+# the basename of the genome file
