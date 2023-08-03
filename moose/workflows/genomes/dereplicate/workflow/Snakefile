@@ -201,6 +201,7 @@ rule dRep_quality_file:
     params:
         quality_file = config['qual_info'] if config['qual_info'] else None,
         genomes = _dereplicat_genomes_,
+        missing = Path(_dereplicat_resdir_) / 'missing.txt',
     run:
         import pandas as pd        
         with open(str(output),'w') as f:
@@ -209,26 +210,30 @@ rule dRep_quality_file:
                 if 'Completeness' not in quality_df.columns or 'Contamination' not in quality_df.columns:
                     raise KeyError('Missing Completeness or Contamination column in qual_info file.')
                 path_to_genome = [p for k,p in params.genomes.items()]
-                
                 valid_genome_qual = []
-                for i in quality_df.index:
-                    for p in path_to_genome:
-                        if i in p:
-                            label = str(Path(p).name)
-                            comp  = quality_df.at[i,'Completeness']
-                            cont  = quality_df.at[i,'Contamination']                            
-                            valid_genome_qual.append(
-                                (label,comp,cont)
-                                )
-                            continue
-                    continue
+                for i,j in params.genomes.items():
+                    #for p in path_to_genome:
+                    if i in quality_df.index.tolist():# or str(Path(p).name) in i:                            
+                        label = str(Path(params.genomes[i]).name)
+                        comp  = quality_df.at[i,'Completeness']
+                        cont  = quality_df.at[i,'Contamination']                            
+                        valid_genome_qual.append(
+                            (label,comp,cont)
+                            )
+                        continue                        
+                    
                 if len(valid_genome_qual) != len(path_to_genome):
-                    raise ValueError('Quality info is missing for some genomes : {}'.format(', '.join(valid_genome_qual)))
+                    with open(str(params.missing),'w') as f:
+                        for i,j in params.genomes.items():
+                        #for p in path_to_genome:
+                            if i not in quality_df.index.tolist():# or str(Path(p)   
+                                f.write(i+'\n')
+                    raise ValueError('Quality info is missing for {} genomes, see missing.txt'.format(len(path_to_genome) - len(valid_genome_qual)))
                 else:
                     f.write('genome,completeness,contamination\n')
                     for e in valid_genome_qual:
                         f.write('{},{},{}\n'.format(*e))
-
+                raise NameError
                 
         
 

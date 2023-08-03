@@ -16,7 +16,6 @@ def validate_config():
 # config and input validation :
 validate_config()
 
-
 _genomes_quality_input_ = yaml.load(open(config["input"]),Loader=yaml.SafeLoader)
 
 if not _genomes_quality_input_:
@@ -131,9 +130,6 @@ rule checkM_qa_full:
         "&>> {log} "
 
 
-# def get_bins(wildcards):
-#     bins = expand(os.path.join(_genomes_quality_tmpdir_,"Bins",wildcards.batch,"{bin}.fna"), bin=  _genomes_quality_batches_[wildcards.batch],)
-#     return bins
 def get_extension_from_file(wildcards,input):
     with open(str(input)) as f:
         return "."+os.path.basename(f.read().strip()).split('.')[-1]
